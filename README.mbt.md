@@ -57,19 +57,17 @@ moon check --target js --deny-warn
 moon check --target wasm-gc --deny-warn
 ```
 
-After publication, consumers will be able to add the declared release with:
+Consumers will be able to add the declared release with:
 
 ```bash
 moon add Ag108/MoonCache@0.1.0
 ```
 
-Until then, build from this source tree or reference a local checkout.
-
 ## Minimal cached runtime
 
 Add the root package to `moon.pkg`:
 
-```moonbit nocheck
+```moonbit
 ///|
 import {
   "Ag108/MoonCache" @mooncache,
@@ -78,7 +76,7 @@ import {
 
 Then inject a Store, a Transport, and time:
 
-```moonbit nocheck
+```moonbit
 let store = @mooncache.MemoryStore::default()
 let origin = @mooncache.FakeTransport::new([
   @mooncache.TransportResponse::new(
@@ -138,12 +136,12 @@ moon run examples/etag_revalidation
 moon run examples/shared_private
 ```
 
-| Example | Demonstrates |
-|---|---|
-| `basic_cache` | first request misses, second request hits |
-| `vary_language` | English and Chinese variants remain independent |
-| `etag_revalidation` | stale ETag request receives 304 and retains its body |
-| `shared_private` | private cache reuses a private response; shared cache rejects it |
+| Example               | Demonstrates                                                     |
+| --------------------- | ---------------------------------------------------------------- |
+| `basic_cache`       | first request misses, second request hits                        |
+| `vary_language`     | English and Chinese variants remain independent                  |
+| `etag_revalidation` | stale ETag request receives 304 and retains its body             |
+| `shared_private`    | private cache reuses a private response; shared cache rejects it |
 
 Every example checks its own expected source, body, variant count, or origin
 call count and exits unsuccessfully on a regression.
@@ -156,7 +154,7 @@ call count and exits unsuccessfully on a regression.
 types. Origin-form request targets require the caller to supply the absolute
 URI:
 
-```moonbit nocheck
+```moonbit
 ///|
 let cached_request = @mooncache_http11.request_to_runtime_at_uri(
   wire_request, "https://example.test/data", request_time,
@@ -172,7 +170,7 @@ The core package does not import HTTP11.
 `AsyncCachedRuntime`. The real transport currently supports GET, POST, and PUT
 through `moonbitlang/async/http@0.20.2` and receives an injected response clock:
 
-```moonbit nocheck
+```moonbit
 ///|
 let origin = @mooncache_async.MoonbitAsyncHttpTransport::new(clock)
 
