@@ -1,9 +1,9 @@
 import {
   "Ag108/MoonCache" @mooncache,
   "moonbitlang/core/debug",
+  "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x/fs",
-  "moonbitlang/x/sys",
 }
 
 pkgtype(kind: "executable")

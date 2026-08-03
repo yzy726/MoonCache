@@ -4,6 +4,15 @@ test "CLI defaults to help" {
 }
 
 ///|
+test "CLI removes the executable path from environment arguments" {
+  assert_eq(command_args(["mooncache"]), [])
+  assert_eq(command_args(["mooncache", "unknown"]), ["unknown"])
+  assert_eq(command_args(["mooncache", "validate", "case.json"]), [
+    "validate", "case.json",
+  ])
+}
+
+///|
 test "CLI parses text explain" {
   assert_true(
     parse_command(["explain", "case.json"]) is Explain("case.json", TextOutput),

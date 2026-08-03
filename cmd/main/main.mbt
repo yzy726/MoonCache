@@ -40,19 +40,10 @@ fn usage() -> String {
 
 ///|
 fn command_args(raw : Array[String]) -> Array[String] {
-  if raw.length() >= 2 {
-    let second = raw[1]
-    if second == "explain" ||
-      second == "validate" ||
-      second == "replay" ||
-      second == "help" ||
-      second == "version" ||
-      second == "--help" ||
-      second == "--version" {
-      return raw[1:].to_owned()
-    }
+  if raw.length() == 0 {
+    return []
   }
-  raw
+  raw[1:].to_owned()
 }
 
 ///|
@@ -315,8 +306,11 @@ fn run(args : Array[String]) -> Int raise {
 }
 
 ///|
+extern "C" fn process_exit(code : Int) = "exit"
+
+///|
 fn main {
-  let args = command_args(@sys.get_cli_args())
+  let args = command_args(@env.args())
   let exit_code = run(args) catch {
     CliArgumentError(message) => {
       println("mooncache: \{message}")
@@ -329,6 +323,6 @@ fn main {
     }
   }
   if exit_code != 0 {
-    @sys.exit(exit_code)
+    process_exit(exit_code)
   }
 }
