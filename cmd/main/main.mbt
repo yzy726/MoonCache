@@ -21,7 +21,7 @@ priv suberror CliArgumentError {
 ///|
 fn usage() -> String {
   let text =
-    #|MoonCache 0.1.0
+    #|MoonCache 0.1.2
     #|
     #|Usage:
     #|  mooncache explain <scenario.json> [--json]
@@ -302,7 +302,7 @@ fn run(args : Array[String]) -> Int raise {
       0
     }
     Version => {
-      println("mooncache 0.1.0")
+      println("mooncache 0.1.2")
       0
     }
     Explain(path, format) => {

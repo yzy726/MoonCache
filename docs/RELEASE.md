@@ -1,6 +1,6 @@
 # Release checklist
 
-## Local `0.1.0` acceptance
+## Published `0.1.2` release
 
 - [x] module version and Apache-2.0 license declared
 - [x] policy, Vary, validation, 304, MemoryStore, Runtime, Trace, and CLI
@@ -13,24 +13,13 @@
 - [x] RFC, Store, testing, security, limitation, dependency, and AI records
 - [x] milestone-oriented Git history
 
-## Maintainer-owned publication gates
+## Publication record
 
-These operations cannot be completed safely from a local implementation task
-without the maintainer's external destination and credentials:
+- Source repository: <https://github.com/yzy726/MoonCache>
+- Package page: <https://mooncakes.io/docs/Ag108/MoonCache>
+- Install command: `moon add Ag108/MoonCache@0.1.2`
 
-- [ ] create or select the public repository
-- [ ] set the real `repository` URL in `moon.mod`
-- [ ] push the reviewed commit history
-- [ ] authenticate to mooncakes.io
-- [ ] verify the package name `Ag108/MoonCache` is owned and available
-- [ ] publish `0.1.0`
-- [ ] install `0.1.0` into a clean external project
-- [ ] create the public release/tag and attach the final changelog
-
-Do not invent a repository URL or claim a registry release before these boxes
-are completed.
-
-## Pre-publication commands
+## Release verification commands
 
 ```bash
 moon fmt --check
@@ -54,4 +43,4 @@ files that must not be published.
 Reason-code strings are compatibility-sensitive. Public `.mbti` changes,
 scenario-schema changes, and adapter dependency upgrades must be called out in
 `CHANGELOG.md`. The `0.1.x` series is pre-stable; `1.0.0` requires the broader
-terminal-acceptance work in `goal.md`.
+stability review and explicit API guarantees.

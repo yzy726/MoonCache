@@ -16,7 +16,7 @@ fn rejected_storage(code : CacheReasonCode, rfc : String) -> StorageDecision {
 
 ///|
 /// Statuses defined as heuristically cacheable by RFC 9111. Partial-content
-/// status 206 is excluded because range caching is outside the 0.1.0 scope.
+/// status 206 is excluded because range caching is outside the 0.1.2 scope.
 pub fn is_default_cacheable_status(status : Int) -> Bool {
   status == 200 ||
   status == 203 ||

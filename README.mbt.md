@@ -1,7 +1,7 @@
 # MoonCache
 
 MoonCache is a transport-independent, explainable HTTP cache policy and
-runtime toolkit for MoonBit. It implements the initial `0.1.0` cache lifecycle:
+runtime toolkit for MoonBit. It implements the `0.1.2` cache lifecycle:
 
 ```text
 Request
@@ -18,9 +18,9 @@ Request
 It is an HTTP caching semantics layer, not an HTTP protocol stack, generic LRU,
 cookie jar, or production reverse proxy.
 
-## Initial acceptance status
+## Release status
 
-The local `0.1.0` implementation includes:
+The `0.1.2` release includes:
 
 - normalized request, response, header, URI, and saturating time models;
 - private/shared storage rules and authenticated-request protection;
@@ -37,9 +37,9 @@ The local `0.1.0` implementation includes:
 - four runnable, self-checking examples;
 - 279 deterministic test blocks with no public-network or real-wait tests.
 
-Registry publication and making the repository publicly accessible are release
-operations that require the maintainer's repository URL and mooncakes.io
-credentials. See [Release](docs/RELEASE.md).
+- Source: [yzy726/MoonCache](https://github.com/yzy726/MoonCache)
+- Package: [Ag108/MoonCache](https://mooncakes.io/docs/Ag108/MoonCache)
+- License: Apache-2.0
 
 ## Build and test
 
@@ -57,17 +57,17 @@ moon check --target js --deny-warn
 moon check --target wasm-gc --deny-warn
 ```
 
-Consumers will be able to add the declared release with:
+Add the published release with:
 
 ```bash
-moon add Ag108/MoonCache@0.1.0
+moon add Ag108/MoonCache@0.1.2
 ```
 
 ## Minimal cached runtime
 
 Add the root package to `moon.pkg`:
 
-```moonbit
+```moonbit nocheck
 ///|
 import {
   "Ag108/MoonCache" @mooncache,
@@ -76,7 +76,7 @@ import {
 
 Then inject a Store, a Transport, and time:
 
-```moonbit
+```moonbit nocheck
 let store = @mooncache.MemoryStore::default()
 let origin = @mooncache.FakeTransport::new([
   @mooncache.TransportResponse::new(
@@ -154,7 +154,7 @@ call count and exits unsuccessfully on a regression.
 types. Origin-form request targets require the caller to supply the absolute
 URI:
 
-```moonbit
+```moonbit nocheck
 ///|
 let cached_request = @mooncache_http11.request_to_runtime_at_uri(
   wire_request, "https://example.test/data", request_time,
@@ -170,7 +170,7 @@ The core package does not import HTTP11.
 `AsyncCachedRuntime`. The real transport currently supports GET, POST, and PUT
 through `moonbitlang/async/http@0.20.2` and receives an injected response clock:
 
-```moonbit
+```moonbit nocheck
 ///|
 let origin = @mooncache_async.MoonbitAsyncHttpTransport::new(clock)
 

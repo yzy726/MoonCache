@@ -18,6 +18,13 @@ Request
 
 它解决的是“一个 HTTP 响应为什么能命中、为什么必须重验证、为什么不能存储”这类缓存语义问题。MoonCache 不是 HTTP 协议栈、通用 LRU 容器、Cookie 管理器，也不是可直接部署的生产反向代理。
 
+## 发布信息
+
+- 当前版本：`0.1.2`
+- 代码仓库：[yzy726/MoonCache](https://github.com/yzy726/MoonCache)
+- Mooncakes：[Ag108/MoonCache](https://mooncakes.io/docs/Ag108/MoonCache)
+- 开源许可证：Apache-2.0
+
 ## 核心特性
 
 - 🧩 **与传输层解耦**：缓存策略不依赖具体 HTTP 客户端，`Transport` 和 `CacheStore` 均可替换。
@@ -72,7 +79,7 @@ moon check --target wasm-gc --deny-warn
 使用 Moon 安装已发布的软件包：
 
 ```bash
-moon add Ag108/MoonCache@0.1.0
+moon add Ag108/MoonCache@0.1.2
 ```
 
 在 `moon.pkg` 中导入根包：

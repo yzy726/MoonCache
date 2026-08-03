@@ -11,11 +11,11 @@
 
 name = "Ag108/MoonCache"
 
-version = "0.1.0"
+version = "0.1.2"
 
 readme = "README.mbt.md"
 
-repository = ""
+repository = "https://github.com/yzy726/MoonCache"
 
 license = "Apache-2.0"
 

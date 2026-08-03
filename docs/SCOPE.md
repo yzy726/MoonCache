@@ -12,7 +12,7 @@ application request
   -> store update and trace
 ```
 
-## In scope for 0.1.0
+## In scope for 0.1.2
 
 - `GET` and `HEAD` cache decisions.
 - Private and shared cache modes.

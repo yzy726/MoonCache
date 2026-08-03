@@ -2,7 +2,7 @@
 
 All notable changes are documented here.
 
-## 0.1.0 - Unreleased
+## 0.1.2 - 2026-08-03
 
 ### Added
 
@@ -27,5 +27,7 @@ All notable changes are documented here.
   authorized-request defaults.
 - Sensitive diagnostic fields are redacted and stored metadata is sanitized.
 
-This version remains “Unreleased” until the maintainer completes the public
-repository and mooncakes.io publication gates in `docs/RELEASE.md`.
+Source and package pages:
+
+- <https://github.com/yzy726/MoonCache>
+- <https://mooncakes.io/docs/Ag108/MoonCache>

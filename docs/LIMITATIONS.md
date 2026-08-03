@@ -1,6 +1,6 @@
-# Initial-release limitations
+# Current-release limitations
 
-The following are deliberate boundaries of `0.1.0`, not hidden claims of
+The following are deliberate boundaries of `0.1.2`, not hidden claims of
 support.
 
 ## Cache semantics
@@ -25,7 +25,7 @@ support.
 ## Networking
 
 - The portable runtime is synchronous and transport-independent.
-- The initial native async HTTP adapter supports buffered GET, POST, and PUT.
+- The native async HTTP adapter supports buffered GET, POST, and PUT.
 - Its origin path performs a planning lookup followed by a replay lookup.
 - No adapter-level timeout, redirect, proxy, streaming, or cancellation policy.
 - No bundled production proxy or public-server listener.
@@ -37,11 +37,10 @@ support.
 - Scenario `upstream_response` is reserved for richer replay and is not used by
   the pure policy analyzer.
 
-## Release operations
+## Publication
 
-- A local version number does not mean the package is already published.
-- Public repository creation/push and mooncakes.io publication require the
-  maintainer's destination and credentials.
+- Source repository: <https://github.com/yzy726/MoonCache>
+- Package page: <https://mooncakes.io/docs/Ag108/MoonCache>
 
-Planned post-initial work is described in `goal.md`; unsupported features must
-not be inferred from that roadmap.
+Unsupported features must not be inferred from future plans or issue
+discussions.
