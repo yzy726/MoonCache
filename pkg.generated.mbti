@@ -9,6 +9,20 @@ import {
 // Values
 pub const MAX_DELTA_SECONDS : Int64 = 9_223_372_036_854_775_807
 
+pub fn cache_control_from_headers(HeaderMap) -> CacheControl
+
+pub fn calculate_current_age(ResponseMeta, Timestamp) -> AgeCalculation
+
+pub fn calculate_freshness_lifetime(ResponseMeta, CacheOptions) -> FreshnessCalculation
+
+pub fn evaluate_cached_response(RequestMeta, ResponseMeta, CacheOptions, Timestamp) -> CacheDecision
+
+pub fn evaluate_request_policy(RequestMeta) -> RequestPolicy
+
+pub fn evaluate_storage(RequestMeta, ResponseMeta, CacheOptions) -> StorageDecision
+
+pub fn is_default_cacheable_status(Int) -> Bool
+
 pub fn is_valid_header_name(String) -> Bool
 
 pub fn normalize_header_name(String) -> String
@@ -17,7 +31,15 @@ pub fn normalize_header_value(String) -> String
 
 pub fn normalize_method(String) -> String
 
+pub fn parse_cache_control(String) -> CacheControl
+
+pub fn parse_delta_seconds(String) -> DeltaSeconds?
+
+pub fn parse_http_date(String) -> Timestamp?
+
 pub fn parse_scenario(String) -> CacheScenario raise ScenarioError
+
+pub fn request_has_legacy_no_cache(HeaderMap) -> Bool
 
 pub fn scenario_to_json(CacheScenario) -> String
 
@@ -28,6 +50,54 @@ pub suberror ScenarioError {
 pub fn ScenarioError::message(Self) -> String
 
 // Types and methods
+pub(all) struct AgeCalculation {
+  apparent_age : DeltaSeconds
+  response_delay : DeltaSeconds
+  age_value : DeltaSeconds
+  corrected_age_value : DeltaSeconds
+  corrected_initial_age : DeltaSeconds
+  resident_time : DeltaSeconds
+  current_age : DeltaSeconds
+  clock_clamped : Bool
+  overflow_clamped : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CacheActionKind {
+  ServeFresh
+  Revalidate
+  Fetch
+  ServeStale
+  Bypass
+  OnlyIfCachedMiss
+} derive(Compare, Eq, @debug.Debug)
+pub fn CacheActionKind::label(Self) -> String
+
+pub(all) struct CacheControl {
+  mut no_cache : Bool
+  mut no_store : Bool
+  mut is_private : Bool
+  mut is_public : Bool
+  mut must_revalidate : Bool
+  mut proxy_revalidate : Bool
+  mut immutable : Bool
+  mut only_if_cached : Bool
+  mut max_age : DeltaSeconds?
+  mut shared_max_age : DeltaSeconds?
+  mut min_fresh : DeltaSeconds?
+  mut max_stale : DeltaSeconds?
+  mut max_stale_unbounded : Bool
+  mut stale_if_error : DeltaSeconds?
+  mut stale_while_revalidate : DeltaSeconds?
+  mut malformed_delta : Bool
+} derive(Eq, @debug.Debug)
+pub fn CacheControl::new() -> Self
+
+pub(all) struct CacheDecision {
+  action : CacheActionKind
+  trace : CacheTrace
+  storage : StorageDecision
+} derive(Eq, @debug.Debug)
+
 pub(all) enum CacheMode {
   Private
   Shared
@@ -46,7 +116,9 @@ pub(all) struct CacheOptions {
 } derive(Eq, @debug.Debug)
 pub fn CacheOptions::private_cache() -> Self
 pub fn CacheOptions::shared_cache() -> Self
+pub fn CacheOptions::with_cache_head_responses(Self, Bool) -> Self
 pub fn CacheOptions::with_heuristic_freshness(Self, Bool) -> Self
+pub fn CacheOptions::with_heuristic_settings(Self, Int, DeltaSeconds) -> Self
 pub fn CacheOptions::with_shared_authorized(Self, Bool) -> Self
 
 pub(all) struct CacheReason {
@@ -124,6 +196,24 @@ pub(all) struct CacheScenario {
   expected : ScenarioExpected?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct CacheTrace {
+  mut action : CacheActionKind
+  reasons : Array[CacheReason]
+  mut age : AgeCalculation?
+  mut freshness_lifetime : DeltaSeconds?
+  mut stale_by : DeltaSeconds?
+  mut primary_key : String?
+  mut selected_variant : String?
+  mut validator : String?
+  generated_headers : HeaderMap
+} derive(Eq, @debug.Debug)
+pub fn CacheTrace::add_reason(Self, CacheReason) -> Unit
+pub fn CacheTrace::has_reason(Self, CacheReasonCode) -> Bool
+pub fn CacheTrace::json_report(Self) -> String
+pub fn CacheTrace::new(CacheActionKind) -> Self
+pub fn CacheTrace::text_report(Self) -> String
+pub fn CacheTrace::to_json(Self) -> Json
+
 pub struct DeltaSeconds(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn DeltaSeconds::from_seconds(Int64) -> Self
 pub fn DeltaSeconds::max(Self, Self) -> Self
@@ -134,6 +224,24 @@ pub fn DeltaSeconds::saturating_scale(Self, Int64, Int64) -> Self
 pub fn DeltaSeconds::saturating_sub(Self, Self) -> Self
 pub fn DeltaSeconds::seconds(Self) -> Int64
 pub fn DeltaSeconds::zero() -> Self
+
+pub(all) struct FreshnessCalculation {
+  lifetime : DeltaSeconds
+  source : FreshnessSource
+  date_value : Timestamp
+  expires_value : Timestamp?
+  last_modified_value : Timestamp?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FreshnessSource {
+  SharedMaxAge
+  MaxAge
+  Expires
+  HeuristicLastModified
+  NoFreshness
+} derive(Compare, Eq, @debug.Debug)
+pub fn FreshnessSource::label(Self) -> String
+pub fn FreshnessSource::reason(Self) -> CacheReasonCode
 
 pub struct HeaderMap {
   values : Map[String, Array[String]]
@@ -173,6 +281,17 @@ pub fn RequestMeta::simple(String, String) -> Self
 pub fn RequestMeta::with_headers(Self, HeaderMap) -> Self
 pub fn RequestMeta::with_request_time(Self, Timestamp) -> Self
 
+pub(all) struct RequestPolicy {
+  bypass : Bool
+  force_revalidation : Bool
+  only_if_cached : Bool
+  max_age : DeltaSeconds?
+  min_fresh : DeltaSeconds
+  max_stale : DeltaSeconds?
+  max_stale_unbounded : Bool
+} derive(Eq, @debug.Debug)
+pub fn RequestPolicy::allows_stale(Self, DeltaSeconds) -> Bool
+
 pub(all) struct ResponseMeta {
   status : Int
   headers : HeaderMap
@@ -207,6 +326,12 @@ pub(all) struct ScenarioResponse {
 pub fn ScenarioResponse::body_bytes(Self) -> Bytes
 pub fn ScenarioResponse::to_meta(Self, Timestamp) -> ResponseMeta
 
+pub(all) struct StorageDecision {
+  storable : Bool
+  policy : StoredPolicy
+  reasons : Array[CacheReason]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct StoredEntry {
   primary_key : PrimaryCacheKey
   variant_key : VariantKey
@@ -227,8 +352,13 @@ pub(all) struct StoredPolicy {
   requires_revalidation : Bool
   no_store : Bool
   vary_star : Bool
+  must_revalidate : Bool
+  proxy_revalidate : Bool
+  is_private : Bool
+  is_public : Bool
 } derive(Eq, @debug.Debug)
 pub fn StoredPolicy::cacheable(DeltaSeconds, Bool) -> Self
+pub fn StoredPolicy::from_directives(DeltaSeconds, CacheControl, Bool) -> Self
 pub fn StoredPolicy::uncacheable() -> Self
 
 pub struct Timestamp(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)

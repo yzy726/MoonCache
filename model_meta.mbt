@@ -169,12 +169,37 @@ pub fn CacheOptions::with_shared_authorized(
 }
 
 ///|
+pub fn CacheOptions::with_cache_head_responses(
+  self : CacheOptions,
+  enabled : Bool,
+) -> CacheOptions {
+  CacheOptions::{ ..self, cache_head_responses: enabled }
+}
+
+///|
+pub fn CacheOptions::with_heuristic_settings(
+  self : CacheOptions,
+  fraction_per_mille : Int,
+  maximum : DeltaSeconds,
+) -> CacheOptions {
+  CacheOptions::{
+    ..self,
+    heuristic_fraction_per_mille: fraction_per_mille,
+    max_heuristic_lifetime: maximum,
+  }
+}
+
+///|
 pub(all) struct StoredPolicy {
   cacheable : Bool
   freshness_lifetime : DeltaSeconds
   requires_revalidation : Bool
   no_store : Bool
   vary_star : Bool
+  must_revalidate : Bool
+  proxy_revalidate : Bool
+  is_private : Bool
+  is_public : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -185,6 +210,10 @@ pub fn StoredPolicy::uncacheable() -> StoredPolicy {
     requires_revalidation: false,
     no_store: true,
     vary_star: false,
+    must_revalidate: false,
+    proxy_revalidate: false,
+    is_private: false,
+    is_public: false,
   }
 }
 
@@ -199,5 +228,28 @@ pub fn StoredPolicy::cacheable(
     requires_revalidation,
     no_store: false,
     vary_star: false,
+    must_revalidate: false,
+    proxy_revalidate: false,
+    is_private: false,
+    is_public: false,
+  }
+}
+
+///|
+pub fn StoredPolicy::from_directives(
+  lifetime : DeltaSeconds,
+  directives : CacheControl,
+  vary_star : Bool,
+) -> StoredPolicy {
+  StoredPolicy::{
+    cacheable: !directives.no_store && !vary_star,
+    freshness_lifetime: lifetime,
+    requires_revalidation: directives.no_cache,
+    no_store: directives.no_store,
+    vary_star,
+    must_revalidate: directives.must_revalidate,
+    proxy_revalidate: directives.proxy_revalidate,
+    is_private: directives.is_private,
+    is_public: directives.is_public,
   }
 }
