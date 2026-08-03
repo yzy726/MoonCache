@@ -1,0 +1,5 @@
+// import {
+//   "Ag108/MoonCache" @lib,
+// }
+
+pkgtype(kind: "executable")

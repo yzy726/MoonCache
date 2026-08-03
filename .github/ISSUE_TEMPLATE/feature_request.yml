@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose an addition within MoonCache's documented scope.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the integration or HTTP caching problem.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include RFC references, API impact, and portability constraints.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I checked docs/SCOPE.md and this is not a protocol-stack feature.
+          required: true
