@@ -53,6 +53,10 @@ pub(all) enum CacheReasonCode {
   StoreEvictedEntries
   StoreEvictedBytes
   StoreInvalidated
+  InvalidateUnsafeMethod
+  InvalidateRelatedUri
+  InvalidateSkippedSafeMethod
+  InvalidateSkippedErrorStatus
 } derive(Eq, Compare, Debug)
 
 ///|
@@ -109,6 +113,10 @@ pub fn CacheReasonCode::code(self : CacheReasonCode) -> String {
     StoreEvictedEntries => "MC_MEM_002"
     StoreEvictedBytes => "MC_MEM_003"
     StoreInvalidated => "MC_MEM_004"
+    InvalidateUnsafeMethod => "MC_INV_001"
+    InvalidateRelatedUri => "MC_INV_002"
+    InvalidateSkippedSafeMethod => "MC_INV_003"
+    InvalidateSkippedErrorStatus => "MC_INV_004"
   }
 }
 
@@ -167,6 +175,11 @@ pub fn CacheReasonCode::message(self : CacheReasonCode) -> String {
     StoreEvictedEntries => "entry-count capacity caused deterministic eviction"
     StoreEvictedBytes => "body-byte capacity caused deterministic eviction"
     StoreInvalidated => "all variants for the URI were invalidated"
+    InvalidateUnsafeMethod => "successful unsafe method invalidates its target"
+    InvalidateRelatedUri => "same-origin related URI is also invalidated"
+    InvalidateSkippedSafeMethod =>
+      "safe method does not invalidate cache entries"
+    InvalidateSkippedErrorStatus => "error response does not invalidate entries"
   }
 }
 

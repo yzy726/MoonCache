@@ -34,8 +34,7 @@ fn add_request_policy_reasons(
 
 ///|
 fn response_has_validator(response : ResponseMeta) -> Bool {
-  response.headers.contains("etag") ||
-  response.headers.contains("last-modified")
+  has_usable_validator(response)
 }
 
 ///|

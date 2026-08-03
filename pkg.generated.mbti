@@ -9,11 +9,17 @@ import {
 // Values
 pub const MAX_DELTA_SECONDS : Int64 = 9_223_372_036_854_775_807
 
+pub fn build_variant_key(HeaderMap, VarySpec) -> VariantKey?
+
 pub fn cache_control_from_headers(HeaderMap) -> CacheControl
+
+pub fn cache_origin(String) -> String?
 
 pub fn calculate_current_age(ResponseMeta, Timestamp) -> AgeCalculation
 
 pub fn calculate_freshness_lifetime(ResponseMeta, CacheOptions) -> FreshnessCalculation
+
+pub fn create_revalidation_plan(RequestMeta, ResponseMeta) -> RevalidationPlan
 
 pub fn evaluate_cached_response(RequestMeta, ResponseMeta, CacheOptions, Timestamp) -> CacheDecision
 
@@ -21,9 +27,21 @@ pub fn evaluate_request_policy(RequestMeta) -> RequestPolicy
 
 pub fn evaluate_storage(RequestMeta, ResponseMeta, CacheOptions) -> StorageDecision
 
+pub fn has_usable_validator(ResponseMeta) -> Bool
+
 pub fn is_default_cacheable_status(Int) -> Bool
 
+pub fn is_safe_http_method(String) -> Bool
+
+pub fn is_valid_etag(String) -> Bool
+
 pub fn is_valid_header_name(String) -> Bool
+
+pub fn match_vary(RequestMeta, RequestMeta, ResponseMeta) -> VaryMatch
+
+pub fn merge_not_modified(StoredEntry, ResponseMeta, CacheOptions, Timestamp) -> NotModifiedResult raise ValidationError
+
+pub fn normalize_cache_uri(String) -> String?
 
 pub fn normalize_header_name(String) -> String
 
@@ -39,15 +57,34 @@ pub fn parse_http_date(String) -> Timestamp?
 
 pub fn parse_scenario(String) -> CacheScenario raise ScenarioError
 
+pub fn parse_vary(HeaderMap) -> VarySpec
+
+pub fn plan_invalidation(RequestMeta, ResponseMeta) -> InvalidationPlan
+
+pub fn primary_cache_key(RequestMeta) -> PrimaryCacheKey?
+
 pub fn request_has_legacy_no_cache(HeaderMap) -> Bool
 
+pub fn resolve_related_uri(String, String) -> String?
+
+pub fn response_validator_kind(ResponseMeta) -> ValidatorKind?
+
+pub fn same_cache_origin(String, String) -> Bool
+
 pub fn scenario_to_json(CacheScenario) -> String
+
+pub fn select_variant(Array[StoredEntry], RequestMeta) -> VariantSelection
 
 // Errors
 pub suberror ScenarioError {
   ScenarioError(String)
 } derive(Eq, @debug.Debug)
 pub fn ScenarioError::message(Self) -> String
+
+pub suberror ValidationError {
+  ExpectedNotModified(Int)
+} derive(Eq, @debug.Debug)
+pub fn ValidationError::message(Self) -> String
 
 // Types and methods
 pub(all) struct AgeCalculation {
@@ -182,6 +219,10 @@ pub(all) enum CacheReasonCode {
   StoreEvictedEntries
   StoreEvictedBytes
   StoreInvalidated
+  InvalidateUnsafeMethod
+  InvalidateRelatedUri
+  InvalidateSkippedSafeMethod
+  InvalidateSkippedErrorStatus
 } derive(Compare, Eq, @debug.Debug)
 pub fn CacheReasonCode::code(Self) -> String
 pub fn CacheReasonCode::message(Self) -> String
@@ -263,10 +304,22 @@ pub fn HeaderMap::redacted(Self) -> Self
 pub fn HeaderMap::remove(Self, String) -> Bool
 pub fn HeaderMap::set(Self, String, String) -> Bool
 
+pub(all) struct InvalidationPlan {
+  uris : Array[String]
+  reasons : Array[CacheReason]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct NotModifiedResult {
+  entry : StoredEntry
+  storage : StorageDecision
+  reasons : Array[CacheReason]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PrimaryCacheKey {
   http_method : String
   uri : String
 } derive(Compare, Eq, Hash, @debug.Debug)
+pub fn PrimaryCacheKey::from_request(RequestMeta) -> Self?
 pub fn PrimaryCacheKey::label(Self) -> String
 pub fn PrimaryCacheKey::new(String, String) -> Self
 
@@ -301,6 +354,14 @@ pub(all) struct ResponseMeta {
 } derive(Eq, @debug.Debug)
 pub fn ResponseMeta::complete(Int, HeaderMap, Timestamp, Timestamp) -> Self
 pub fn ResponseMeta::new(Int, HeaderMap, Timestamp, Timestamp, Bool) -> Self
+
+pub(all) struct RevalidationPlan {
+  request : RequestMeta
+  generated_headers : HeaderMap
+  validator_kind : ValidatorKind?
+  reasons : Array[CacheReason]
+} derive(Eq, @debug.Debug)
+pub fn RevalidationPlan::can_revalidate(Self) -> Bool
 
 pub(all) struct ScenarioExpected {
   action : String
@@ -368,12 +429,49 @@ pub fn Timestamp::saturating_add(Self, DeltaSeconds) -> Self
 pub fn Timestamp::seconds(Self) -> Int64
 pub fn Timestamp::zero() -> Self
 
+pub(all) enum ValidatorKind {
+  StrongEtag
+  WeakEtag
+  LastModified
+  StrongEtagAndLastModified
+  WeakEtagAndLastModified
+  CallerConditions
+} derive(Compare, Eq, @debug.Debug)
+pub fn ValidatorKind::label(Self) -> String
+
 pub(all) struct VariantKey {
   canonical : String
   label : String
 } derive(Compare, Eq, Hash, @debug.Debug)
 pub fn VariantKey::empty() -> Self
 pub fn VariantKey::from_canonical(String, String) -> Self
+
+pub(all) struct VariantSelection {
+  entry : StoredEntry?
+  inspected : Int
+  variant_key : VariantKey?
+  reasons : Array[CacheReason]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct VaryMatch {
+  kind : VaryMatchKind
+  differing_field : String?
+  stored_key : VariantKey?
+  candidate_key : VariantKey?
+  reason : CacheReason
+} derive(Eq, @debug.Debug)
+
+pub(all) enum VaryMatchKind {
+  VaryMatchedResult
+  VaryMismatchResult
+  VaryStarResult
+} derive(Compare, Eq, @debug.Debug)
+
+pub(all) struct VarySpec {
+  fields : Array[String]
+  star : Bool
+} derive(Eq, @debug.Debug)
+pub fn VarySpec::default() -> Self
 
 // Type aliases
 

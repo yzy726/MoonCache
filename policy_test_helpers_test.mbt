@@ -47,3 +47,33 @@ fn shared_options() -> @MoonCache.CacheOptions {
 fn reason_codes(reasons : Array[@MoonCache.CacheReason]) -> Array[String] {
   reasons.map(fn(reason) { reason.code.code() })
 }
+
+///|
+fn policy_entry(
+  request_pairs : Array[(String, String)],
+  response_pairs : Array[(String, String)],
+  body : Bytes,
+  stored_at : Int64,
+) -> @MoonCache.StoredEntry {
+  let request = policy_request("GET", request_pairs)
+  let response = policy_response(200, response_pairs, 0, 0, true)
+  let key = @MoonCache.primary_cache_key(request).unwrap()
+  let variant = @MoonCache.build_variant_key(
+    request.headers,
+    @MoonCache.parse_vary(response.headers),
+  ).unwrap_or(@MoonCache.VariantKey::empty())
+  let storage = @MoonCache.evaluate_storage(
+    request,
+    response,
+    private_options(),
+  )
+  @MoonCache.StoredEntry::new(
+    key,
+    variant,
+    request,
+    response,
+    body,
+    storage.policy,
+    @MoonCache.Timestamp::from_seconds(stored_at),
+  )
+}
