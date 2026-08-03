@@ -5,7 +5,7 @@ waits, and do not access the public network.
 
 ## Current initial-acceptance inventory
 
-The repository contains 279 MoonBit test blocks.
+The repository contains 280 MoonBit test blocks.
 
 | Family | Named tests |
 |---|---:|

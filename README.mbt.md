@@ -1,7 +1,7 @@
 # MoonCache
 
 MoonCache is a transport-independent, explainable HTTP cache policy and
-runtime toolkit for MoonBit. It implements the `0.1.2` cache lifecycle:
+runtime toolkit for MoonBit. It implements the `0.1.3` cache lifecycle:
 
 ```text
 Request
@@ -20,7 +20,7 @@ cookie jar, or production reverse proxy.
 
 ## Release status
 
-The `0.1.2` release includes:
+The `0.1.3` release includes:
 
 - normalized request, response, header, URI, and saturating time models;
 - private/shared storage rules and authenticated-request protection;
@@ -35,7 +35,7 @@ The `0.1.2` release includes:
 - a native CLI with explain, validate, and replay commands;
 - optional `f4ah6o/http11` and native `moonbitlang/async/http` adapters;
 - four runnable, self-checking examples;
-- 279 deterministic test blocks with no public-network or real-wait tests.
+- 280 deterministic test blocks with no public-network or real-wait tests.
 
 - Source: [yzy726/MoonCache](https://github.com/yzy726/MoonCache)
 - Package: [Ag108/MoonCache](https://mooncakes.io/docs/Ag108/MoonCache)
@@ -60,7 +60,7 @@ moon check --target wasm-gc --deny-warn
 Add the published release with:
 
 ```bash
-moon add Ag108/MoonCache@0.1.2
+moon add Ag108/MoonCache@0.1.3
 ```
 
 ## Minimal cached runtime

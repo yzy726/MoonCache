@@ -2,6 +2,15 @@
 
 All notable changes are documented here.
 
+## 0.1.3 - 2026-08-03
+
+### Fixed
+
+- Replaced the legacy native CLI argument binding with `moonbitlang/core/env`
+  so Linux builds link against the current MoonBit runtime.
+- Preserved documented CLI argument handling and nonzero process exit codes.
+- Updated generated interfaces for the current MoonBit formatter.
+
 ## 0.1.2 - 2026-08-03
 
 ### Added

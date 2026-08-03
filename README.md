@@ -20,7 +20,7 @@ Request
 
 ## 发布信息
 
-- 当前版本：`0.1.2`
+- 当前版本：`0.1.3`
 - 代码仓库：[yzy726/MoonCache](https://github.com/yzy726/MoonCache)
 - Mooncakes：[Ag108/MoonCache](https://mooncakes.io/docs/Ag108/MoonCache)
 - 开源许可证：Apache-2.0
@@ -79,7 +79,7 @@ moon check --target wasm-gc --deny-warn
 使用 Moon 安装已发布的软件包：
 
 ```bash
-moon add Ag108/MoonCache@0.1.2
+moon add Ag108/MoonCache@0.1.3
 ```
 
 在 `moon.pkg` 中导入根包：
@@ -327,7 +327,7 @@ MoonCache/
 
 ## 测试与质量
 
-当前版本包含 279 个确定性测试块，不访问公网、不进行真实时间等待。覆盖内容包括：
+当前版本包含 280 个确定性测试块，不访问公网、不进行真实时间等待。覆盖内容包括：
 
 - 模型规范化和时间边界；
 - Cache-Control 解析、可存储性、年龄和新鲜度；
@@ -344,7 +344,7 @@ MoonCache/
 
 | 检查项 | 结果 |
 |---|---:|
-| native 测试 | 279 / 279 |
+| native 测试 | 280 / 280 |
 | JavaScript 测试 | 261 / 261 |
 | wasm-gc 测试 | 261 / 261 |
 | 自检示例 | 4 / 4 |

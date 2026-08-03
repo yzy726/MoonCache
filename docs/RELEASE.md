@@ -1,6 +1,6 @@
 # Release checklist
 
-## Published `0.1.2` release
+## Published `0.1.3` release
 
 - [x] module version and Apache-2.0 license declared
 - [x] policy, Vary, validation, 304, MemoryStore, Runtime, Trace, and CLI
@@ -17,7 +17,7 @@
 
 - Source repository: <https://github.com/yzy726/MoonCache>
 - Package page: <https://mooncakes.io/docs/Ag108/MoonCache>
-- Install command: `moon add Ag108/MoonCache@0.1.2`
+- Install command: `moon add Ag108/MoonCache@0.1.3`
 
 ## Release verification commands
 

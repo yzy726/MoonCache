@@ -15,7 +15,7 @@ accepted solely because it compiles.
 Every milestone is formatted and checked with the MoonBit toolchain. Public
 interface diffs are reviewed, deterministic unit/contract/end-to-end tests are
 run, and native/JavaScript/wasm-gc checks are part of final acceptance. The
-initial implementation contains 279 deterministic test blocks, four
+initial implementation contains 280 deterministic test blocks, four
 self-checking examples, CLI smoke fixtures, an optional HTTP11 contract suite,
 and a native async adapter suite that performs no public-network access.
 
