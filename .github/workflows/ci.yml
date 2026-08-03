@@ -22,6 +22,8 @@ jobs:
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Toolchain
         run: moon version --all
+      - name: Update package registry
+        run: moon update
       - name: Formatting
         run: moon fmt --check
       - name: Check
@@ -37,6 +39,8 @@ jobs:
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Update package registry
+        run: moon update
       - name: Generate interfaces
         run: moon info
       - name: Verify generated files
@@ -50,6 +54,8 @@ jobs:
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Update package registry
+        run: moon update
       - name: CLI smoke
         run: |
           moon run cmd/main -- validate examples/scenarios/basic-cache.json
