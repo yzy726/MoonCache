@@ -1,0 +1,24 @@
+{
+  "name": "fresh cached response",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/data",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "cached body",
+    "complete": true
+  },
+  "expected": {
+    "action": "serve_fresh",
+    "reason": "MC_RUNTIME_001"
+  }
+}

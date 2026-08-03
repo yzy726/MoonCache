@@ -66,6 +66,12 @@ Every terminal decision includes stable reason codes and relevant arithmetic.
 Renderers remove sensitive header values. The CLI consumes deterministic
 scenario files; it does not perform network requests.
 
+### Adapters
+
+`adapters/http11` converts concrete HTTP11 request/response types at the
+boundary. `adapters/async_http` owns the native suspension and network boundary.
+Neither adapter is imported by the root package.
+
 ## Determinism
 
 When two calls receive equal metadata, options, stored entries, and `now`, they

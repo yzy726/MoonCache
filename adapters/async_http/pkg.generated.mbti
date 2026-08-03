@@ -1,0 +1,54 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Ag108/MoonCache/adapters/async_http"
+
+import {
+  "Ag108/MoonCache",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn headers_from_async_http(Map[String, String]) -> @MoonCache.HeaderMap
+
+pub fn headers_to_async_http(@MoonCache.HeaderMap) -> Map[String, String]
+
+// Errors
+pub suberror AsyncAdapterError {
+  AsyncUnsupportedMethod(String)
+  AsyncGetBodyUnsupported
+  AsyncRequestCancelled
+  AsyncScriptExhausted
+  AsyncCoreFailure(String)
+  AsyncProbeDidNotRecordRequest
+} derive(Eq, @debug.Debug)
+pub fn AsyncAdapterError::message(Self) -> String
+
+// Types and methods
+pub struct AsyncCachedRuntime[S, T] {
+  // private fields
+}
+pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] AsyncCachedRuntime::execute(Self[S, T], @MoonCache.RuntimeRequest, @MoonCache.Timestamp) -> @MoonCache.RuntimeResponse
+pub fn[S, T] AsyncCachedRuntime::new(S, T, @MoonCache.CacheOptions) -> Self[S, T]
+pub fn[S : @MoonCache.CacheStore, T] AsyncCachedRuntime::store_stats(Self[S, T]) -> @MoonCache.StoreStats
+
+pub struct MoonbitAsyncHttpTransport {
+  // private fields
+}
+pub fn MoonbitAsyncHttpTransport::fixed(@MoonCache.Timestamp) -> Self
+pub fn MoonbitAsyncHttpTransport::new(() -> @MoonCache.Timestamp) -> Self
+pub impl AsyncTransport for MoonbitAsyncHttpTransport
+
+pub struct ScriptedAsyncTransport {
+  // private fields
+}
+pub fn ScriptedAsyncTransport::call_count(Self) -> Int
+pub fn ScriptedAsyncTransport::calls(Self) -> Array[@MoonCache.RuntimeRequest]
+pub fn ScriptedAsyncTransport::new(Array[@MoonCache.TransportResponse]) -> Self
+pub impl AsyncTransport for ScriptedAsyncTransport
+
+// Type aliases
+
+// Traits
+pub(open) trait AsyncTransport {
+  async fn execute(Self, @MoonCache.RuntimeRequest) -> @MoonCache.TransportResponse
+}
+

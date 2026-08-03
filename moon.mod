@@ -28,4 +28,9 @@ description = "A transport-independent, explainable HTTP cache policy and runtim
 import {
   "moonbitlang/x@0.4.46",
   "moonbitlang/async@0.20.2",
+  "f4ah6o/http11@0.1.1",
 }
+
+options(
+  exclude: [ "AGENTS.md", "goal.md" ],
+)

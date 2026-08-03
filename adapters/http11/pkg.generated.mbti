@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Ag108/MoonCache/adapters/http11"
+
+import {
+  "Ag108/MoonCache",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn request_to_runtime(@f4ah6o/http11.Request, @MoonCache.Timestamp) -> @MoonCache.RuntimeRequest raise Http11AdapterError
+
+pub fn request_to_runtime_at_uri(@f4ah6o/http11.Request, String, @MoonCache.Timestamp) -> @MoonCache.RuntimeRequest raise Http11AdapterError
+
+pub fn response_to_transport(@f4ah6o/http11.Response, @MoonCache.Timestamp, @MoonCache.Timestamp, body_complete? : Bool) -> @MoonCache.TransportResponse raise Http11AdapterError
+
+pub fn runtime_request_to_http11(@MoonCache.RuntimeRequest) -> @f4ah6o/http11.Request
+
+pub fn runtime_response_to_http11(@MoonCache.RuntimeResponse) -> @f4ah6o/http11.Response
+
+pub fn transport_response_to_http11(@MoonCache.TransportResponse) -> @f4ah6o/http11.Response
+
+// Errors
+pub suberror Http11AdapterError {
+  AbsoluteUriRequired(String)
+  InvalidHeaderName(String)
+} derive(Eq, @debug.Debug)
+pub fn Http11AdapterError::message(Self) -> String
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

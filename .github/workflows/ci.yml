@@ -41,3 +41,23 @@ jobs:
         run: moon info
       - name: Verify generated files
         run: git diff --exit-code
+
+  initial-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: CLI smoke
+        run: |
+          moon run cmd/main -- validate examples/scenarios/basic-cache.json
+          moon run cmd/main -- explain examples/scenarios/stale-etag.json --json
+          moon run cmd/main -- replay testdata/scenarios
+      - name: Runnable examples
+        run: |
+          moon run examples/basic_cache
+          moon run examples/vary_language
+          moon run examples/etag_revalidation
+          moon run examples/shared_private

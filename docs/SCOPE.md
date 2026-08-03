@@ -24,6 +24,9 @@ application request
 - An in-memory HTTP cache with deterministic capacity eviction.
 - A transport-independent synchronous runtime and deterministic test
   transports. The core API is intentionally free of network and filesystem IO.
+- An optional direct `f4ah6o/http11` conversion package.
+- A native-only minimal `moonbitlang/async/http` transport and async runtime
+  wrapper, isolated from the portable core.
 - Stable reason codes and redacted text/JSON decision reports.
 - A CLI for validating, explaining, and replaying deterministic scenarios.
 
@@ -48,4 +51,5 @@ renderers redact credential-bearing fields.
 
 The model, policy, variant, validation, trace, and memory-store packages are
 designed to check on native, JavaScript, and wasm-gc targets. IO adapters are
-isolated so target-specific dependencies do not leak into the core.
+isolated so target-specific dependencies do not leak into the core. The CLI and
+async HTTP adapter intentionally declare native-only target support.

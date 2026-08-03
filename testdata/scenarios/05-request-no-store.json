@@ -1,0 +1,16 @@
+{
+  "name": "request no-store bypass",
+  "mode": "private",
+  "now": 1,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/data",
+    "headers": {
+      "Cache-Control": "no-store"
+    }
+  },
+  "expected": {
+    "action": "bypass",
+    "reason": "MC_REQ_001"
+  }
+}

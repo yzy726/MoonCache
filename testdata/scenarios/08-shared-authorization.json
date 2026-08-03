@@ -1,0 +1,26 @@
+{
+  "name": "shared cache refuses authorized response by default",
+  "mode": "shared",
+  "now": 1,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/account",
+    "headers": {
+      "Authorization": "Bearer secret"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "account",
+    "complete": true
+  },
+  "expected": {
+    "action": "fetch",
+    "reason": "MC_AUTH_001"
+  }
+}

@@ -351,14 +351,19 @@ pub(all) struct InvalidationPlan {
 pub struct MemoryStore {
   // private fields
 }
+pub fn MemoryStore::cached_uris(Self) -> Array[String]
 pub fn MemoryStore::clear(Self) -> Unit
+pub fn MemoryStore::contains_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
 pub fn MemoryStore::default() -> Self
 pub fn MemoryStore::find_variants(Self, PrimaryCacheKey) -> Array[StoredEntry]
 pub fn MemoryStore::invalidate_uri(Self, String) -> Int
 pub fn MemoryStore::new(MemoryStoreOptions) -> Self
+pub fn MemoryStore::options(Self) -> MemoryStoreOptions
+pub fn MemoryStore::peek_variants(Self, String) -> Array[StoredEntry]
 pub fn MemoryStore::put(Self, StoredEntry) -> StorePutResult
 pub fn MemoryStore::remove_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
 pub fn MemoryStore::stats(Self) -> StoreStats
+pub fn MemoryStore::variant_count(Self, String) -> Int
 pub impl CacheStore for MemoryStore
 
 pub(all) struct MemoryStoreOptions {
@@ -369,7 +374,12 @@ pub(all) struct MemoryStoreOptions {
   strip_request_credentials : Bool
 } derive(Eq, @debug.Debug)
 pub fn MemoryStoreOptions::default() -> Self
+pub fn MemoryStoreOptions::with_entry_limit(Self, Int) -> Self
 pub fn MemoryStoreOptions::with_limits(Int, Int64, Int64) -> Self
+pub fn MemoryStoreOptions::with_request_credential_stripping(Self, Bool) -> Self
+pub fn MemoryStoreOptions::with_set_cookie_stripping(Self, Bool) -> Self
+pub fn MemoryStoreOptions::with_single_body_limit(Self, Int64) -> Self
+pub fn MemoryStoreOptions::with_total_body_limit(Self, Int64) -> Self
 
 pub(all) struct NotModifiedResult {
   entry : StoredEntry
@@ -458,6 +468,10 @@ pub(all) struct RuntimeResponse {
   source : ResponseSource
   trace : CacheTrace
 } derive(Eq, @debug.Debug)
+pub fn RuntimeResponse::is_cache_reuse(Self) -> Bool
+pub fn RuntimeResponse::json_report(Self) -> String
+pub fn RuntimeResponse::text_report(Self) -> String
+pub fn RuntimeResponse::to_json(Self) -> Json
 
 pub(all) struct ScenarioAnalysis {
   name : String
@@ -503,6 +517,8 @@ pub(all) enum StorePutResult {
   StoreRejectedOversized
   StoreRejectedCapacity
 } derive(Compare, Eq, @debug.Debug)
+pub fn StorePutResult::accepted(Self) -> Bool
+pub fn StorePutResult::label(Self) -> String
 
 pub(all) struct StoreStats {
   entries : Int
@@ -516,6 +532,13 @@ pub(all) struct StoreStats {
   invalidated_entries : Int64
   rejected_entries : Int64
 } derive(Eq, @debug.Debug)
+pub fn StoreStats::hit_rate_per_mille(Self) -> Int
+pub fn StoreStats::is_empty(Self) -> Bool
+pub fn StoreStats::json_report(Self) -> String
+pub fn StoreStats::requests(Self) -> Int64
+pub fn StoreStats::saved_origin_requests(Self) -> Int64
+pub fn StoreStats::text_report(Self) -> String
+pub fn StoreStats::to_json(Self) -> Json
 
 pub(all) struct StoredEntry {
   primary_key : PrimaryCacheKey

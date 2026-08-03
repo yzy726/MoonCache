@@ -1,0 +1,27 @@
+{
+  "name": "language variant is reusable",
+  "mode": "private",
+  "now": 5,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/greeting",
+    "headers": {
+      "Accept-Language": "zh-CN"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "Vary": "Accept-Language"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "Ni hao",
+    "complete": true
+  },
+  "expected": {
+    "action": "serve_fresh",
+    "reason": "MC_FRESH_006"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "empty cache miss",
+  "mode": "private",
+  "now": 0,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/data",
+    "headers": {}
+  },
+  "expected": {
+    "action": "fetch",
+    "reason": "MC_RUNTIME_002"
+  }
+}

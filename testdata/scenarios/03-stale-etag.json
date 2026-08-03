@@ -1,0 +1,25 @@
+{
+  "name": "stale ETag requires validation",
+  "mode": "private",
+  "now": 90,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/data",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "ETag": "\"v1\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "cached",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_REVAL_001"
+  }
+}

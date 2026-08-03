@@ -271,3 +271,87 @@ test "memory store returns defensive metadata copies" {
   let second = store.find_variants(entry.primary_key)[0]
   assert_eq(second.response.headers.get("etag"), Some("\"v1\""))
 }
+
+///|
+test "memory store option builders preserve unrelated defaults" {
+  let options = @MoonCache.MemoryStoreOptions::default()
+    .with_entry_limit(10)
+    .with_total_body_limit(1_000L)
+    .with_single_body_limit(100L)
+    .with_set_cookie_stripping(false)
+    .with_request_credential_stripping(false)
+  assert_eq(options.max_entries, 10)
+  assert_eq(options.max_body_bytes, 1_000L)
+  assert_eq(options.max_body_size, 100L)
+  assert_false(options.strip_set_cookie)
+  assert_false(options.strip_request_credentials)
+}
+
+///|
+test "memory store exposes immutable options" {
+  let options = @MoonCache.MemoryStoreOptions::with_limits(3, 30L, 10L)
+  let store = @MoonCache.MemoryStore::new(options)
+  assert_eq(store.options(), options)
+}
+
+///|
+test "memory store peek does not change lookup statistics" {
+  let store = @MoonCache.MemoryStore::default()
+  ignore(
+    store.put(policy_entry([], [("Cache-Control", "max-age=60")], b"body", 0)),
+  )
+  let before = store.stats()
+  let entries = store.peek_variants("https://example.test/data")
+  let after = store.stats()
+  assert_eq(entries.length(), 1)
+  assert_eq(before.lookups, after.lookups)
+  assert_eq(before.hits, after.hits)
+  assert_eq(before.misses, after.misses)
+}
+
+///|
+test "memory store lists unique normalized URIs deterministically" {
+  let store = @MoonCache.MemoryStore::default()
+  ignore(
+    store.put(
+      policy_entry_for_uri(
+        "https://example.test/z",
+        [],
+        [("Cache-Control", "max-age=60")],
+        b"z",
+        0,
+      ),
+    ),
+  )
+  ignore(
+    store.put(
+      policy_entry_for_uri(
+        "https://example.test/a",
+        [],
+        [("Cache-Control", "max-age=60")],
+        b"a",
+        0,
+      ),
+    ),
+  )
+  assert_eq(store.cached_uris(), [
+    "https://example.test/a", "https://example.test/z",
+  ])
+  assert_eq(store.variant_count("https://example.test/a"), 1)
+}
+
+///|
+test "memory store reports exact variant presence" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [("Accept-Language", "en")],
+    [("Cache-Control", "max-age=60"), ("Vary", "Accept-Language")],
+    b"English",
+    0,
+  )
+  ignore(store.put(entry))
+  assert_true(store.contains_variant(entry.primary_key, entry.variant_key))
+  assert_false(
+    store.contains_variant(entry.primary_key, @MoonCache.VariantKey::empty()),
+  )
+}

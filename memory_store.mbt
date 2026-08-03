@@ -33,6 +33,46 @@ pub fn MemoryStoreOptions::with_limits(
 }
 
 ///|
+pub fn MemoryStoreOptions::with_entry_limit(
+  self : MemoryStoreOptions,
+  max_entries : Int,
+) -> MemoryStoreOptions {
+  { ..self, max_entries, }
+}
+
+///|
+pub fn MemoryStoreOptions::with_total_body_limit(
+  self : MemoryStoreOptions,
+  max_body_bytes : Int64,
+) -> MemoryStoreOptions {
+  { ..self, max_body_bytes, }
+}
+
+///|
+pub fn MemoryStoreOptions::with_single_body_limit(
+  self : MemoryStoreOptions,
+  max_body_size : Int64,
+) -> MemoryStoreOptions {
+  { ..self, max_body_size, }
+}
+
+///|
+pub fn MemoryStoreOptions::with_set_cookie_stripping(
+  self : MemoryStoreOptions,
+  strip_set_cookie : Bool,
+) -> MemoryStoreOptions {
+  { ..self, strip_set_cookie, }
+}
+
+///|
+pub fn MemoryStoreOptions::with_request_credential_stripping(
+  self : MemoryStoreOptions,
+  strip_request_credentials : Bool,
+) -> MemoryStoreOptions {
+  { ..self, strip_request_credentials, }
+}
+
+///|
 pub(all) enum StorePutResult {
   StoreInserted
   StoreReplacedResult
@@ -380,6 +420,68 @@ pub fn MemoryStore::stats(self : MemoryStore) -> StoreStats {
     invalidated_entries: self.invalidated_entries,
     rejected_entries: self.rejected_entries,
   }
+}
+
+///|
+/// Return the immutable configuration used by this Store.
+pub fn MemoryStore::options(self : MemoryStore) -> MemoryStoreOptions {
+  self.options
+}
+
+///|
+/// Inspect variants for a URI without updating logical access order or lookup
+/// counters. Returned entries are defensive copies.
+pub fn MemoryStore::peek_variants(
+  self : MemoryStore,
+  uri : String,
+) -> Array[StoredEntry] {
+  let target = normalize_cache_uri(uri).unwrap_or(uri.trim().to_owned())
+  let result : Array[StoredEntry] = []
+  for record in self.records {
+    if record.entry.primary_key.uri == target {
+      result.push(record.entry.copy())
+    }
+  }
+  result
+}
+
+///|
+pub fn MemoryStore::variant_count(self : MemoryStore, uri : String) -> Int {
+  self.peek_variants(uri).length()
+}
+
+///|
+pub fn MemoryStore::contains_variant(
+  self : MemoryStore,
+  key : PrimaryCacheKey,
+  variant : VariantKey,
+) -> Bool {
+  self.replacement_index(key, variant) is Some(_)
+}
+
+///|
+fn compare_store_uris(left : String, right : String) -> Int {
+  if left < right {
+    -1
+  } else if left > right {
+    1
+  } else {
+    0
+  }
+}
+
+///|
+/// Return each normalized cached URI once in deterministic lexical order.
+pub fn MemoryStore::cached_uris(self : MemoryStore) -> Array[String] {
+  let result : Array[String] = []
+  for record in self.records {
+    let uri = record.entry.primary_key.uri
+    if !result.contains(uri) {
+      result.push(uri)
+    }
+  }
+  result.sort_by(compare_store_uris)
+  result
 }
 
 ///|

@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Ag108/MoonCache/examples/support"
+
+import {
+  "Ag108/MoonCache",
+}
+
+// Values
+pub fn print_result(String, @MoonCache.RuntimeResponse) -> Unit
+
+pub fn request(String, String, Array[(String, String)]) -> @MoonCache.RuntimeRequest
+
+pub fn require(Bool, String) -> Unit raise
+
+pub fn response(Int, Array[(String, String)], Bytes, Int64, Int64) -> @MoonCache.TransportResponse
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

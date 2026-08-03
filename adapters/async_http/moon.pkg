@@ -1,0 +1,7 @@
+import {
+  "Ag108/MoonCache" @mooncache,
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+}
+
+supported_targets = "native"

@@ -1,0 +1,16 @@
+{
+  "name": "only-if-cached miss",
+  "mode": "private",
+  "now": 1,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/data",
+    "headers": {
+      "Cache-Control": "only-if-cached"
+    }
+  },
+  "expected": {
+    "action": "only_if_cached_miss",
+    "reason": "MC_RUNTIME_007"
+  }
+}

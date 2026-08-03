@@ -1,45 +1,232 @@
 # MoonCache
 
 MoonCache is a transport-independent, explainable HTTP cache policy and
-runtime toolkit for MoonBit. It models the HTTP caching lifecycle described by
-RFC 9111 without implementing an HTTP protocol stack.
+runtime toolkit for MoonBit. It implements the initial `0.1.0` cache lifecycle:
 
-The `0.1.0` acceptance target covers:
-
-- normalized request, response, header, and time models;
-- private/shared cacheability and freshness decisions;
-- corrected age calculation and conservative overflow handling;
-- `Vary` variants and normalized cache keys;
-- ETag/Last-Modified revalidation and `304 Not Modified` merging;
-- an HTTP-specific in-memory store;
-- a transport-independent runtime with deterministic fake transports;
-- stable reason codes, text/JSON traces, and a scenario CLI.
-
-## Status
-
-The repository is being implemented milestone by milestone. The public API is
-not considered stable before the `0.1.0` acceptance milestone is complete.
-
-## Quick start
-
-```bash
-moon check --deny-warn
-moon test --deny-warn
-moon run cmd/main -- explain examples/scenarios/basic-cache.json
+```text
+Request
+  -> normalized cache key
+  -> Store lookup
+  -> Vary selection
+  -> freshness decision
+  -> Fetch or conditional revalidation
+  -> 304 merge or replacement
+  -> Store update
+  -> RuntimeResponse + CacheTrace
 ```
 
-The library never reads the system clock in its policy core. Callers supply all
-request, response, storage, and evaluation timestamps, which keeps tests and
-cross-target behavior deterministic.
+It is an HTTP caching semantics layer, not an HTTP protocol stack, generic LRU,
+cookie jar, or production reverse proxy.
 
-## Design
+## Initial acceptance status
+
+The local `0.1.0` implementation includes:
+
+- normalized request, response, header, URI, and saturating time models;
+- private/shared storage rules and authenticated-request protection;
+- RFC 9111 corrected age and freshness calculations;
+- `Vary` variants with missing-versus-empty field semantics;
+- ETag and Last-Modified conditional requests;
+- `304 Not Modified` metadata merging with cached-body retention;
+- an HTTP-specific `MemoryStore` with deterministic eviction and limits;
+- a complete transport-independent `CachedRuntime`;
+- deterministic `FakeTransport` and `RecordingTransport`;
+- redacted text/JSON trace, runtime, and Store statistics reports;
+- a native CLI with explain, validate, and replay commands;
+- optional `f4ah6o/http11` and native `moonbitlang/async/http` adapters;
+- four runnable, self-checking examples;
+- 279 deterministic test blocks with no public-network or real-wait tests.
+
+Registry publication and making the repository publicly accessible are release
+operations that require the maintainer's repository URL and mooncakes.io
+credentials. See [Release](docs/RELEASE.md).
+
+## Build and test
+
+```bash
+moon fmt --check
+moon check --deny-warn
+moon test --deny-warn
+```
+
+The portable packages are also checked explicitly:
+
+```bash
+moon check --target native --deny-warn
+moon check --target js --deny-warn
+moon check --target wasm-gc --deny-warn
+```
+
+After publication, consumers will be able to add the declared release with:
+
+```bash
+moon add Ag108/MoonCache@0.1.0
+```
+
+Until then, build from this source tree or reference a local checkout.
+
+## Minimal cached runtime
+
+Add the root package to `moon.pkg`:
+
+```moonbit nocheck
+///|
+import {
+  "Ag108/MoonCache" @mooncache,
+}
+```
+
+Then inject a Store, a Transport, and time:
+
+```moonbit nocheck
+let store = @mooncache.MemoryStore::default()
+let origin = @mooncache.FakeTransport::new([
+  @mooncache.TransportResponse::new(
+    @mooncache.ResponseMeta::complete(
+      200,
+      @mooncache.HeaderMap::from_pairs([
+        ("Cache-Control", "max-age=60"),
+      ]),
+      @mooncache.Timestamp::zero(),
+      @mooncache.Timestamp::zero(),
+    ),
+    b"hello",
+  ),
+])
+let runtime = @mooncache.CachedRuntime::new(
+  store,
+  origin,
+  @mooncache.CacheOptions::private_cache(),
+)
+let request = @mooncache.RuntimeRequest::get(
+  "https://example.test/greeting",
+)
+let first = try! runtime.execute(request, @mooncache.Timestamp::zero())
+let second = try! runtime.execute(
+  request,
+  @mooncache.Timestamp::from_seconds(10L),
+)
+println(first.source.label())  // upstream
+println(second.source.label()) // cache
+```
+
+`CacheStore` and `Transport` are open traits, so applications can replace both
+implementations without changing policy code.
+
+## CLI
+
+The CLI consumes deterministic JSON scenarios and never performs a network
+request:
+
+```bash
+moon run cmd/main -- explain examples/scenarios/stale-etag.json
+moon run cmd/main -- explain examples/scenarios/stale-etag.json --json
+moon run cmd/main -- validate examples/scenarios/basic-cache.json
+moon run cmd/main -- replay testdata/scenarios
+moon run cmd/main -- replay testdata/scenarios --json
+```
+
+`replay` sorts paths explicitly and continues after an unreadable or malformed
+individual file, returning a failing exit code with a complete summary.
+
+## Runnable examples
+
+```bash
+moon run examples/basic_cache
+moon run examples/vary_language
+moon run examples/etag_revalidation
+moon run examples/shared_private
+```
+
+| Example | Demonstrates |
+|---|---|
+| `basic_cache` | first request misses, second request hits |
+| `vary_language` | English and Chinese variants remain independent |
+| `etag_revalidation` | stale ETag request receives 304 and retains its body |
+| `shared_private` | private cache reuses a private response; shared cache rejects it |
+
+Every example checks its own expected source, body, variant count, or origin
+call count and exits unsuccessfully on a regression.
+
+## Optional adapters
+
+### HTTP11
+
+`adapters/http11` directly converts `f4ah6o/http11@0.1.1` request and response
+types. Origin-form request targets require the caller to supply the absolute
+URI:
+
+```moonbit nocheck
+///|
+let cached_request = @mooncache_http11.request_to_runtime_at_uri(
+  wire_request, "https://example.test/data", request_time,
+)
+```
+
+The core package does not import HTTP11.
+
+### Native async HTTP
+
+`adapters/async_http` provides `AsyncTransport`,
+`MoonbitAsyncHttpTransport`, `ScriptedAsyncTransport`, and
+`AsyncCachedRuntime`. The real transport currently supports GET, POST, and PUT
+through `moonbitlang/async/http@0.20.2` and receives an injected response clock:
+
+```moonbit nocheck
+///|
+let origin = @mooncache_async.MoonbitAsyncHttpTransport::new(clock)
+
+///|
+let client = @mooncache_async.AsyncCachedRuntime::new(
+  @mooncache.MemoryStore::default(),
+  origin,
+  @mooncache.CacheOptions::private_cache(),
+)
+
+///|
+let response = client.execute(request, now)
+```
+
+The adapter is native-only; model and policy portability do not depend on it.
+See [Async adapter](docs/ASYNC_ADAPTER.md).
+
+## Security defaults
+
+- `no-store`, incomplete bodies, `Vary: *`, and unknown statuses without
+  explicit freshness are not stored.
+- Shared caches reject `private` responses and authorized requests unless an
+  explicit option/rule permits them.
+- `Authorization`, `Proxy-Authorization`, `Cookie`, and `Set-Cookie` values
+  are redacted from reports.
+- MemoryStore strips hop-by-hop response fields, strips `Set-Cookie` by
+  default, and removes request credentials unless a `Vary` field requires one.
+- Body size, total body bytes, and entry count are bounded.
+- Age arithmetic saturates and clamps backward clocks.
+- Core policy never reads a system clock or accesses the network.
+
+Read the [security model](docs/SECURITY_MODEL.md) before integrating a shared
+cache.
+
+## Documentation
 
 - [Scope and boundaries](docs/SCOPE.md)
-- [Architecture and dependency rules](docs/DESIGN.md)
-- [Upstream specifications and references](REFERENCES.md)
+- [Architecture](docs/DESIGN.md)
+- [Cache model](docs/CACHE_MODEL.md)
+- [RFC support matrix](docs/RFC_SUPPORT.md)
+- [Decision codes](docs/DECISION_CODES.md)
+- [Store contract](docs/STORE_CONTRACT.md)
+- [Async adapter](docs/ASYNC_ADAPTER.md)
+- [Testing](docs/TESTING.md)
+- [Compatibility](docs/COMPATIBILITY.md)
+- [Limitations](docs/LIMITATIONS.md)
+- [Release checklist](docs/RELEASE.md)
+- [Specifications and references](REFERENCES.md)
+- [Third-party software](THIRD_PARTY.md)
 - [AI-assisted development record](AI_USAGE.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
+
+The generated root interface is
+[`pkg.generated.mbti`](pkg.generated.mbti). Adapter packages have their own
+generated interfaces after `moon info`.
 
 ## License
 

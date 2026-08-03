@@ -20,3 +20,6 @@ Important invariants include:
 - distinguish missing and empty `Vary` request fields;
 - redact Authorization, Cookie, Proxy-Authorization, and Set-Cookie values;
 - saturate age arithmetic and never produce a negative age.
+
+The integration trust boundaries and maintainer responsibilities are documented
+in [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md).
