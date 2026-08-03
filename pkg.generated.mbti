@@ -1,11 +1,249 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Ag108/MoonCache"
 
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
 // Values
+pub const MAX_DELTA_SECONDS : Int64 = 9_223_372_036_854_775_807
+
+pub fn is_valid_header_name(String) -> Bool
+
+pub fn normalize_header_name(String) -> String
+
+pub fn normalize_header_value(String) -> String
+
+pub fn normalize_method(String) -> String
+
+pub fn parse_scenario(String) -> CacheScenario raise ScenarioError
+
+pub fn scenario_to_json(CacheScenario) -> String
 
 // Errors
+pub suberror ScenarioError {
+  ScenarioError(String)
+} derive(Eq, @debug.Debug)
+pub fn ScenarioError::message(Self) -> String
 
 // Types and methods
+pub(all) enum CacheMode {
+  Private
+  Shared
+} derive(Compare, Eq, @debug.Debug)
+pub fn CacheMode::from_string(String) -> Self?
+pub fn CacheMode::label(Self) -> String
+
+pub(all) struct CacheOptions {
+  mode : CacheMode
+  allow_heuristic_freshness : Bool
+  heuristic_fraction_per_mille : Int
+  max_heuristic_lifetime : DeltaSeconds
+  allow_shared_authorized : Bool
+  cache_head_responses : Bool
+  strip_sensitive_metadata : Bool
+} derive(Eq, @debug.Debug)
+pub fn CacheOptions::private_cache() -> Self
+pub fn CacheOptions::shared_cache() -> Self
+pub fn CacheOptions::with_heuristic_freshness(Self, Bool) -> Self
+pub fn CacheOptions::with_shared_authorized(Self, Bool) -> Self
+
+pub(all) struct CacheReason {
+  code : CacheReasonCode
+  detail : String?
+  rfc : String?
+} derive(Eq, @debug.Debug)
+pub fn CacheReason::new(CacheReasonCode) -> Self
+pub fn CacheReason::with_detail(CacheReasonCode, String) -> Self
+pub fn CacheReason::with_rfc(CacheReasonCode, String) -> Self
+
+pub(all) enum CacheReasonCode {
+  StoreAllowed
+  StoreMethodUnsupported
+  StoreStatusDefault
+  StoreStatusExplicit
+  StoreStatusUnknown
+  StoreNoStore
+  StorePrivateShared
+  StoreAuthorizationShared
+  StoreIncomplete
+  StoreVaryStar
+  StoreOversized
+  StoreCapacityZero
+  FreshMaxAge
+  FreshSharedMaxAge
+  FreshExpires
+  FreshHeuristic
+  FreshNone
+  FreshStillFresh
+  FreshStale
+  AgeApparent
+  AgeCorrected
+  AgeClockClamped
+  AgeOverflowClamped
+  RequestNoStore
+  RequestNoCache
+  RequestOnlyIfCached
+  RequestMaxAge
+  RequestMinFresh
+  RequestMaxStale
+  VaryDefault
+  VaryMatched
+  VaryMismatch
+  VaryMissing
+  VaryStar
+  RevalidateEtag
+  RevalidateLastModified
+  RevalidateBoth
+  RevalidateCallerCondition
+  RevalidateNotModified
+  RevalidateModified
+  RuntimeHit
+  RuntimeMiss
+  RuntimeBypass
+  RuntimeFetch
+  RuntimeStored
+  RuntimeNotStored
+  RuntimeOnlyIfCachedMiss
+  StoreReplaced
+  StoreEvictedEntries
+  StoreEvictedBytes
+  StoreInvalidated
+} derive(Compare, Eq, @debug.Debug)
+pub fn CacheReasonCode::code(Self) -> String
+pub fn CacheReasonCode::message(Self) -> String
+
+pub(all) struct CacheScenario {
+  name : String
+  mode : String
+  now : Int
+  request : ScenarioRequest
+  stored_response : ScenarioResponse?
+  upstream_response : ScenarioResponse?
+  expected : ScenarioExpected?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct DeltaSeconds(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn DeltaSeconds::from_seconds(Int64) -> Self
+pub fn DeltaSeconds::max(Self, Self) -> Self
+pub fn DeltaSeconds::max_value() -> Self
+pub fn DeltaSeconds::min(Self, Self) -> Self
+pub fn DeltaSeconds::saturating_add(Self, Self) -> Self
+pub fn DeltaSeconds::saturating_scale(Self, Int64, Int64) -> Self
+pub fn DeltaSeconds::saturating_sub(Self, Self) -> Self
+pub fn DeltaSeconds::seconds(Self) -> Int64
+pub fn DeltaSeconds::zero() -> Self
+
+pub struct HeaderMap {
+  values : Map[String, Array[String]]
+} derive(Eq, @debug.Debug)
+pub fn HeaderMap::append(Self, String, String) -> Bool
+pub fn HeaderMap::contains(Self, String) -> Bool
+pub fn HeaderMap::copy(Self) -> Self
+pub fn HeaderMap::from_pairs(Array[(String, String)]) -> Self
+pub fn HeaderMap::get(Self, String) -> String?
+pub fn HeaderMap::get_all(Self, String) -> Array[String]
+pub fn HeaderMap::get_first(Self, String) -> String?
+pub fn HeaderMap::is_empty(Self) -> Bool
+pub fn HeaderMap::length(Self) -> Int
+pub fn HeaderMap::names(Self) -> Array[String]
+pub fn HeaderMap::new() -> Self
+pub fn HeaderMap::overlay(Self, Self) -> Self
+pub fn HeaderMap::pairs(Self) -> Array[(String, String)]
+pub fn HeaderMap::redacted(Self) -> Self
+pub fn HeaderMap::remove(Self, String) -> Bool
+pub fn HeaderMap::set(Self, String, String) -> Bool
+
+pub(all) struct PrimaryCacheKey {
+  http_method : String
+  uri : String
+} derive(Compare, Eq, Hash, @debug.Debug)
+pub fn PrimaryCacheKey::label(Self) -> String
+pub fn PrimaryCacheKey::new(String, String) -> Self
+
+pub(all) struct RequestMeta {
+  http_method : String
+  uri : String
+  headers : HeaderMap
+  request_time : Timestamp
+} derive(Eq, @debug.Debug)
+pub fn RequestMeta::new(String, String, HeaderMap, Timestamp) -> Self
+pub fn RequestMeta::simple(String, String) -> Self
+pub fn RequestMeta::with_headers(Self, HeaderMap) -> Self
+pub fn RequestMeta::with_request_time(Self, Timestamp) -> Self
+
+pub(all) struct ResponseMeta {
+  status : Int
+  headers : HeaderMap
+  request_time : Timestamp
+  response_time : Timestamp
+  body_complete : Bool
+} derive(Eq, @debug.Debug)
+pub fn ResponseMeta::complete(Int, HeaderMap, Timestamp, Timestamp) -> Self
+pub fn ResponseMeta::new(Int, HeaderMap, Timestamp, Timestamp, Bool) -> Self
+
+pub(all) struct ScenarioExpected {
+  action : String
+  reason : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ScenarioRequest {
+  http_method : String
+  uri : String
+  headers : Map[String, String]
+  request_time : Int?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn ScenarioRequest::to_meta(Self) -> RequestMeta
+
+pub(all) struct ScenarioResponse {
+  status : Int
+  headers : Map[String, String]
+  request_time : Int?
+  response_time : Int?
+  body : String?
+  complete : Bool?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn ScenarioResponse::body_bytes(Self) -> Bytes
+pub fn ScenarioResponse::to_meta(Self, Timestamp) -> ResponseMeta
+
+pub(all) struct StoredEntry {
+  primary_key : PrimaryCacheKey
+  variant_key : VariantKey
+  request : RequestMeta
+  response : ResponseMeta
+  body : Bytes
+  policy : StoredPolicy
+  stored_at : Timestamp
+  last_accessed_at : Timestamp
+} derive(Eq, @debug.Debug)
+pub fn StoredEntry::body_size(Self) -> Int64
+pub fn StoredEntry::new(PrimaryCacheKey, VariantKey, RequestMeta, ResponseMeta, Bytes, StoredPolicy, Timestamp) -> Self
+pub fn StoredEntry::touch(Self, Timestamp) -> Self
+
+pub(all) struct StoredPolicy {
+  cacheable : Bool
+  freshness_lifetime : DeltaSeconds
+  requires_revalidation : Bool
+  no_store : Bool
+  vary_star : Bool
+} derive(Eq, @debug.Debug)
+pub fn StoredPolicy::cacheable(DeltaSeconds, Bool) -> Self
+pub fn StoredPolicy::uncacheable() -> Self
+
+pub struct Timestamp(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn Timestamp::elapsed_since(Self, Self) -> DeltaSeconds
+pub fn Timestamp::from_seconds(Int64) -> Self
+pub fn Timestamp::saturating_add(Self, DeltaSeconds) -> Self
+pub fn Timestamp::seconds(Self) -> Int64
+pub fn Timestamp::zero() -> Self
+
+pub(all) struct VariantKey {
+  canonical : String
+  label : String
+} derive(Compare, Eq, Hash, @debug.Debug)
+pub fn VariantKey::empty() -> Self
+pub fn VariantKey::from_canonical(String, String) -> Self
 
 // Type aliases
 

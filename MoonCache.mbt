@@ -1,3 +1,3 @@
-// Main package file for your library code.
-// Put public APIs and shared helpers here.
-// Keep blocks small and focused for easy refactors.
+// MoonCache keeps its portable public API in this package. Source files are
+// grouped by responsibility while remaining in one package so applications can
+// integrate the complete initial-acceptance toolkit through one import.
