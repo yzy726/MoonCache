@@ -9,6 +9,10 @@ import {
 // Values
 pub const MAX_DELTA_SECONDS : Int64 = 9_223_372_036_854_775_807
 
+pub fn analyze_scenario(CacheScenario) -> ScenarioAnalysis raise ScenarioError
+
+pub fn analyze_scenario_json(String) -> ScenarioAnalysis raise ScenarioError
+
 pub fn build_variant_key(HeaderMap, VarySpec) -> VariantKey?
 
 pub fn cache_control_from_headers(HeaderMap) -> CacheControl
@@ -26,6 +30,12 @@ pub fn evaluate_cached_response(RequestMeta, ResponseMeta, CacheOptions, Timesta
 pub fn evaluate_request_policy(RequestMeta) -> RequestPolicy
 
 pub fn evaluate_storage(RequestMeta, ResponseMeta, CacheOptions) -> StorageDecision
+
+pub fn[S : CacheStore, T : Transport] execute_cached(S, T, CacheOptions, RuntimeRequest, Timestamp) -> RuntimeResponse raise RuntimeError
+
+pub fn explain_scenario_json(String) -> String raise ScenarioError
+
+pub fn explain_scenario_text(String) -> String raise ScenarioError
 
 pub fn has_usable_validator(ResponseMeta) -> Bool
 
@@ -75,11 +85,24 @@ pub fn scenario_to_json(CacheScenario) -> String
 
 pub fn select_variant(Array[StoredEntry], RequestMeta) -> VariantSelection
 
+pub fn validate_scenario_text(String) -> String raise ScenarioError
+
 // Errors
+pub suberror RuntimeError {
+  RuntimeTransportFailure(String)
+} derive(Eq, @debug.Debug)
+pub fn RuntimeError::message(Self) -> String
+
 pub suberror ScenarioError {
   ScenarioError(String)
 } derive(Eq, @debug.Debug)
 pub fn ScenarioError::message(Self) -> String
+
+pub suberror TransportError {
+  ScriptExhausted
+  ScriptedTransportFailure(String)
+} derive(Eq, @debug.Debug)
+pub fn TransportError::message(Self) -> String
 
 pub suberror ValidationError {
   ExpectedNotModified(Int)
@@ -255,6 +278,13 @@ pub fn CacheTrace::new(CacheActionKind) -> Self
 pub fn CacheTrace::text_report(Self) -> String
 pub fn CacheTrace::to_json(Self) -> Json
 
+pub struct CachedRuntime[S, T] {
+  // private fields
+}
+pub fn[S : CacheStore, T : Transport] CachedRuntime::execute(Self[S, T], RuntimeRequest, Timestamp) -> RuntimeResponse raise RuntimeError
+pub fn[S, T] CachedRuntime::new(S, T, CacheOptions) -> Self[S, T]
+pub fn[S : CacheStore, T] CachedRuntime::store_stats(Self[S, T]) -> StoreStats
+
 pub struct DeltaSeconds(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn DeltaSeconds::from_seconds(Int64) -> Self
 pub fn DeltaSeconds::max(Self, Self) -> Self
@@ -265,6 +295,15 @@ pub fn DeltaSeconds::saturating_scale(Self, Int64, Int64) -> Self
 pub fn DeltaSeconds::saturating_sub(Self, Self) -> Self
 pub fn DeltaSeconds::seconds(Self) -> Int64
 pub fn DeltaSeconds::zero() -> Self
+
+pub struct FakeTransport {
+  // private fields
+}
+pub fn FakeTransport::call_count(Self) -> Int
+pub fn FakeTransport::execute(Self, RuntimeRequest) -> TransportResponse raise TransportError
+pub fn FakeTransport::new(Array[TransportResponse]) -> Self
+pub fn FakeTransport::with_outcomes(Array[TransportOutcome]) -> Self
+pub impl Transport for FakeTransport
 
 pub(all) struct FreshnessCalculation {
   lifetime : DeltaSeconds
@@ -309,6 +348,29 @@ pub(all) struct InvalidationPlan {
   reasons : Array[CacheReason]
 } derive(Eq, @debug.Debug)
 
+pub struct MemoryStore {
+  // private fields
+}
+pub fn MemoryStore::clear(Self) -> Unit
+pub fn MemoryStore::default() -> Self
+pub fn MemoryStore::find_variants(Self, PrimaryCacheKey) -> Array[StoredEntry]
+pub fn MemoryStore::invalidate_uri(Self, String) -> Int
+pub fn MemoryStore::new(MemoryStoreOptions) -> Self
+pub fn MemoryStore::put(Self, StoredEntry) -> StorePutResult
+pub fn MemoryStore::remove_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
+pub fn MemoryStore::stats(Self) -> StoreStats
+pub impl CacheStore for MemoryStore
+
+pub(all) struct MemoryStoreOptions {
+  max_entries : Int
+  max_body_bytes : Int64
+  max_body_size : Int64
+  strip_set_cookie : Bool
+  strip_request_credentials : Bool
+} derive(Eq, @debug.Debug)
+pub fn MemoryStoreOptions::default() -> Self
+pub fn MemoryStoreOptions::with_limits(Int, Int64, Int64) -> Self
+
 pub(all) struct NotModifiedResult {
   entry : StoredEntry
   storage : StorageDecision
@@ -322,6 +384,16 @@ pub(all) struct PrimaryCacheKey {
 pub fn PrimaryCacheKey::from_request(RequestMeta) -> Self?
 pub fn PrimaryCacheKey::label(Self) -> String
 pub fn PrimaryCacheKey::new(String, String) -> Self
+
+pub struct RecordingTransport {
+  // private fields
+}
+pub fn RecordingTransport::call_count(Self) -> Int
+pub fn RecordingTransport::calls(Self) -> Array[RuntimeRequest]
+pub fn RecordingTransport::execute(Self, RuntimeRequest) -> TransportResponse raise TransportError
+pub fn RecordingTransport::new(Array[TransportResponse]) -> Self
+pub fn RecordingTransport::with_outcomes(Array[TransportOutcome]) -> Self
+pub impl Transport for RecordingTransport
 
 pub(all) struct RequestMeta {
   http_method : String
@@ -355,6 +427,15 @@ pub(all) struct ResponseMeta {
 pub fn ResponseMeta::complete(Int, HeaderMap, Timestamp, Timestamp) -> Self
 pub fn ResponseMeta::new(Int, HeaderMap, Timestamp, Timestamp, Bool) -> Self
 
+pub(all) enum ResponseSource {
+  CacheSource
+  UpstreamSource
+  RevalidatedSource
+  StaleSource
+  OnlyIfCachedSource
+} derive(Compare, Eq, @debug.Debug)
+pub fn ResponseSource::label(Self) -> String
+
 pub(all) struct RevalidationPlan {
   request : RequestMeta
   generated_headers : HeaderMap
@@ -362,6 +443,28 @@ pub(all) struct RevalidationPlan {
   reasons : Array[CacheReason]
 } derive(Eq, @debug.Debug)
 pub fn RevalidationPlan::can_revalidate(Self) -> Bool
+
+pub(all) struct RuntimeRequest {
+  meta : RequestMeta
+  body : Bytes
+} derive(Eq, @debug.Debug)
+pub fn RuntimeRequest::copy(Self) -> Self
+pub fn RuntimeRequest::get(String) -> Self
+pub fn RuntimeRequest::new(RequestMeta, Bytes) -> Self
+
+pub(all) struct RuntimeResponse {
+  meta : ResponseMeta
+  body : Bytes
+  source : ResponseSource
+  trace : CacheTrace
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ScenarioAnalysis {
+  name : String
+  trace : CacheTrace
+  valid : Bool
+  errors : Array[String]
+} derive(Eq, @debug.Debug)
 
 pub(all) struct ScenarioExpected {
   action : String
@@ -393,6 +496,27 @@ pub(all) struct StorageDecision {
   reasons : Array[CacheReason]
 } derive(Eq, @debug.Debug)
 
+pub(all) enum StorePutResult {
+  StoreInserted
+  StoreReplacedResult
+  StoreRejectedNoStore
+  StoreRejectedOversized
+  StoreRejectedCapacity
+} derive(Compare, Eq, @debug.Debug)
+
+pub(all) struct StoreStats {
+  entries : Int
+  body_bytes : Int64
+  puts : Int64
+  replacements : Int64
+  evictions : Int64
+  lookups : Int64
+  hits : Int64
+  misses : Int64
+  invalidated_entries : Int64
+  rejected_entries : Int64
+} derive(Eq, @debug.Debug)
+
 pub(all) struct StoredEntry {
   primary_key : PrimaryCacheKey
   variant_key : VariantKey
@@ -404,6 +528,7 @@ pub(all) struct StoredEntry {
   last_accessed_at : Timestamp
 } derive(Eq, @debug.Debug)
 pub fn StoredEntry::body_size(Self) -> Int64
+pub fn StoredEntry::copy(Self) -> Self
 pub fn StoredEntry::new(PrimaryCacheKey, VariantKey, RequestMeta, ResponseMeta, Bytes, StoredPolicy, Timestamp) -> Self
 pub fn StoredEntry::touch(Self, Timestamp) -> Self
 
@@ -428,6 +553,18 @@ pub fn Timestamp::from_seconds(Int64) -> Self
 pub fn Timestamp::saturating_add(Self, DeltaSeconds) -> Self
 pub fn Timestamp::seconds(Self) -> Int64
 pub fn Timestamp::zero() -> Self
+
+pub(all) enum TransportOutcome {
+  TransportSuccess(TransportResponse)
+  TransportFailure(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransportResponse {
+  meta : ResponseMeta
+  body : Bytes
+} derive(Eq, @debug.Debug)
+pub fn TransportResponse::copy(Self) -> Self
+pub fn TransportResponse::new(ResponseMeta, Bytes) -> Self
 
 pub(all) enum ValidatorKind {
   StrongEtag
@@ -476,4 +613,16 @@ pub fn VarySpec::default() -> Self
 // Type aliases
 
 // Traits
+pub(open) trait CacheStore {
+  fn find_variants(Self, PrimaryCacheKey) -> Array[StoredEntry]
+  fn put(Self, StoredEntry) -> StorePutResult
+  fn remove_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
+  fn invalidate_uri(Self, String) -> Int
+  fn clear(Self) -> Unit
+  fn stats(Self) -> StoreStats
+}
+
+pub(open) trait Transport {
+  fn execute(Self, RuntimeRequest) -> TransportResponse raise TransportError
+}
 

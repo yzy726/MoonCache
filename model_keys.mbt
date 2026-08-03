@@ -85,3 +85,24 @@ pub fn StoredEntry::body_size(self : StoredEntry) -> Int64 {
 pub fn StoredEntry::touch(self : StoredEntry, now : Timestamp) -> StoredEntry {
   StoredEntry::{ ..self, last_accessed_at: now }
 }
+
+///|
+/// Deep-copy mutable metadata while sharing the immutable body bytes.
+pub fn StoredEntry::copy(self : StoredEntry) -> StoredEntry {
+  StoredEntry::{
+    primary_key: self.primary_key,
+    variant_key: self.variant_key,
+    request: RequestMeta::{
+      ..self.request,
+      headers: self.request.headers.copy(),
+    },
+    response: ResponseMeta::{
+      ..self.response,
+      headers: self.response.headers.copy(),
+    },
+    body: self.body,
+    policy: self.policy,
+    stored_at: self.stored_at,
+    last_accessed_at: self.last_accessed_at,
+  }
+}

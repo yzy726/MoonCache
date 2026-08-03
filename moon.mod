@@ -21,6 +21,11 @@ license = "Apache-2.0"
 
 keywords = [ "http", "cache", "rfc9111" ]
 
-preferred_target = "wasm"
+preferred_target = "native"
 
 description = "A transport-independent, explainable HTTP cache policy and runtime toolkit."
+
+import {
+  "moonbitlang/x@0.4.46",
+  "moonbitlang/async@0.20.2",
+}

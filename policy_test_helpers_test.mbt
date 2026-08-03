@@ -77,3 +77,53 @@ fn policy_entry(
     @MoonCache.Timestamp::from_seconds(stored_at),
   )
 }
+
+///|
+fn policy_entry_for_uri(
+  uri : String,
+  request_pairs : Array[(String, String)],
+  response_pairs : Array[(String, String)],
+  body : Bytes,
+  stored_at : Int64,
+) -> @MoonCache.StoredEntry {
+  let request = @MoonCache.RequestMeta::new(
+    "GET",
+    uri,
+    policy_headers(request_pairs),
+    @MoonCache.Timestamp::zero(),
+  )
+  let response = policy_response(200, response_pairs, 0, 0, true)
+  let key = @MoonCache.primary_cache_key(request).unwrap()
+  let variant = @MoonCache.build_variant_key(
+    request.headers,
+    @MoonCache.parse_vary(response.headers),
+  ).unwrap_or(@MoonCache.VariantKey::empty())
+  let storage = @MoonCache.evaluate_storage(
+    request,
+    response,
+    private_options(),
+  )
+  @MoonCache.StoredEntry::new(
+    key,
+    variant,
+    request,
+    response,
+    body,
+    storage.policy,
+    @MoonCache.Timestamp::from_seconds(stored_at),
+  )
+}
+
+///|
+fn scripted_response(
+  status : Int,
+  pairs : Array[(String, String)],
+  body : Bytes,
+  request_time : Int64,
+  response_time : Int64,
+) -> @MoonCache.TransportResponse {
+  @MoonCache.TransportResponse::new(
+    policy_response(status, pairs, request_time, response_time, true),
+    body,
+  )
+}
