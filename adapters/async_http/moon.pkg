@@ -2,6 +2,11 @@ import {
   "Ag108/MoonCache" @mooncache,
   "moonbitlang/async",
   "moonbitlang/async/http",
+  "moonbitlang/async/io",
 }
+
+import {
+  "moonbitlang/async/socket",
+} for "wbtest"
 
 supported_targets = "native"

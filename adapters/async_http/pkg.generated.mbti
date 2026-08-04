@@ -16,7 +16,13 @@ pub suberror AsyncAdapterError {
   AsyncUnsupportedMethod(String)
   AsyncGetBodyUnsupported
   AsyncRequestCancelled
+  AsyncInvalidUri(String)
+  AsyncBodyTooLarge(actual~ : Int, maximum~ : Int)
+  AsyncRequestTimedOut(Int)
+  AsyncTooManyRedirects(Int)
+  AsyncRedirectRejected(String)
   AsyncScriptExhausted
+  AsyncScriptedFailure(String)
   AsyncCoreFailure(String)
   AsyncProbeDidNotRecordRequest
 } derive(Eq, @debug.Debug)
@@ -29,6 +35,33 @@ pub struct AsyncCachedRuntime[S, T] {
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] AsyncCachedRuntime::execute(Self[S, T], @MoonCache.RuntimeRequest, @MoonCache.Timestamp) -> @MoonCache.RuntimeResponse
 pub fn[S, T] AsyncCachedRuntime::new(S, T, @MoonCache.CacheOptions) -> Self[S, T]
 pub fn[S : @MoonCache.CacheStore, T] AsyncCachedRuntime::store_stats(Self[S, T]) -> @MoonCache.StoreStats
+pub fn[S, T] AsyncCachedRuntime::with_body_limit(Self[S, T], Int) -> Self[S, T]
+
+pub(all) enum AsyncTransportOutcome {
+  AsyncTransportSuccess(@MoonCache.TransportResponse)
+  AsyncTransportFailure(String)
+  AsyncTransportDelayed(Int, @MoonCache.TransportResponse)
+} derive(Eq, @debug.Debug)
+
+pub struct CachedClient[S, T] {
+  // private fields
+}
+pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::execute(Self[S, T], @MoonCache.RuntimeRequest) -> @MoonCache.RuntimeResponse
+pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::get(Self[S, T], String, headers? : @MoonCache.HeaderMap) -> @MoonCache.RuntimeResponse
+pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::head(Self[S, T], String, headers? : @MoonCache.HeaderMap) -> @MoonCache.RuntimeResponse
+pub fn[S, T] CachedClient::new(S, T, @MoonCache.CacheOptions, clock? : () -> @MoonCache.Timestamp, client_options? : CachedClientOptions) -> Self[S, T]
+pub fn[S : @MoonCache.CacheStore, T] CachedClient::store_stats(Self[S, T]) -> @MoonCache.StoreStats
+
+pub(all) struct CachedClientOptions {
+  timeout_milliseconds : Int?
+  max_response_body_bytes : Int
+  redirect_policy : RedirectPolicy
+  max_redirects : Int
+} derive(Eq, @debug.Debug)
+pub fn CachedClientOptions::default() -> Self
+pub fn CachedClientOptions::with_body_limit(Self, Int) -> Self
+pub fn CachedClientOptions::with_redirects(Self, RedirectPolicy, Int) -> Self
+pub fn CachedClientOptions::with_timeout(Self, Int) -> Self
 
 pub struct MoonbitAsyncHttpTransport {
   // private fields
@@ -37,12 +70,19 @@ pub fn MoonbitAsyncHttpTransport::fixed(@MoonCache.Timestamp) -> Self
 pub fn MoonbitAsyncHttpTransport::new(() -> @MoonCache.Timestamp) -> Self
 pub impl AsyncTransport for MoonbitAsyncHttpTransport
 
+pub(all) enum RedirectPolicy {
+  ReturnRedirect
+  FollowSameOrigin
+  FollowAnyOrigin
+} derive(Compare, Eq, @debug.Debug)
+
 pub struct ScriptedAsyncTransport {
   // private fields
 }
 pub fn ScriptedAsyncTransport::call_count(Self) -> Int
 pub fn ScriptedAsyncTransport::calls(Self) -> Array[@MoonCache.RuntimeRequest]
 pub fn ScriptedAsyncTransport::new(Array[@MoonCache.TransportResponse]) -> Self
+pub fn ScriptedAsyncTransport::with_outcomes(Array[AsyncTransportOutcome]) -> Self
 pub impl AsyncTransport for ScriptedAsyncTransport
 
 // Type aliases

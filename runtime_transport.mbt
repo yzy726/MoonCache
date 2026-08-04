@@ -15,6 +15,38 @@ pub fn RuntimeRequest::get(uri : String) -> RuntimeRequest {
 }
 
 ///|
+pub fn RuntimeRequest::head(uri : String) -> RuntimeRequest {
+  RuntimeRequest::{ meta: RequestMeta::simple("HEAD", uri), body: b"" }
+}
+
+///|
+pub fn RuntimeRequest::with_headers(
+  self : RuntimeRequest,
+  headers : HeaderMap,
+) -> RuntimeRequest {
+  RuntimeRequest::{ meta: self.meta.with_headers(headers), body: self.body }
+}
+
+///|
+pub fn RuntimeRequest::with_request_time(
+  self : RuntimeRequest,
+  request_time : Timestamp,
+) -> RuntimeRequest {
+  RuntimeRequest::{
+    meta: self.meta.with_request_time(request_time),
+    body: self.body,
+  }
+}
+
+///|
+pub fn RuntimeRequest::with_body(
+  self : RuntimeRequest,
+  body : Bytes,
+) -> RuntimeRequest {
+  RuntimeRequest::{ meta: self.meta, body }
+}
+
+///|
 pub fn RuntimeRequest::copy(self : RuntimeRequest) -> RuntimeRequest {
   RuntimeRequest::{
     meta: RequestMeta::{ ..self.meta, headers: self.meta.headers.copy() },

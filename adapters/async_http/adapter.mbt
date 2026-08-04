@@ -1,10 +1,16 @@
 ///|
-/// Errors produced by the initial native async adapter.
+/// Errors produced by the native async adapter and cached client.
 pub suberror AsyncAdapterError {
   AsyncUnsupportedMethod(String)
   AsyncGetBodyUnsupported
   AsyncRequestCancelled
+  AsyncInvalidUri(String)
+  AsyncBodyTooLarge(actual~ : Int, maximum~ : Int)
+  AsyncRequestTimedOut(Int)
+  AsyncTooManyRedirects(Int)
+  AsyncRedirectRejected(String)
   AsyncScriptExhausted
+  AsyncScriptedFailure(String)
   AsyncCoreFailure(String)
   AsyncProbeDidNotRecordRequest
 } derive(Eq, Debug)
@@ -17,10 +23,94 @@ pub fn AsyncAdapterError::message(self : AsyncAdapterError) -> String {
     AsyncGetBodyUnsupported =>
       "the async HTTP adapter conservatively rejects GET requests with a body"
     AsyncRequestCancelled => "the async HTTP request was cancelled"
+    AsyncInvalidUri(uri) => "the async HTTP adapter rejected URI \{uri}"
+    AsyncBodyTooLarge(actual~, maximum~) =>
+      "response body size \{actual} exceeds configured limit \{maximum}"
+    AsyncRequestTimedOut(milliseconds) =>
+      "the async HTTP request exceeded \{milliseconds}ms"
+    AsyncTooManyRedirects(maximum) =>
+      "the async cached client exceeded \{maximum} redirects"
+    AsyncRedirectRejected(uri) =>
+      "the async cached client rejected redirect target \{uri}"
     AsyncScriptExhausted => "the async transport script is exhausted"
+    AsyncScriptedFailure(message) => message
     AsyncCoreFailure(message) => "cache runtime failed: \{message}"
     AsyncProbeDidNotRecordRequest =>
       "cache runtime requested an origin result without recording a request"
+  }
+}
+
+///|
+/// Redirect handling is performed above the transport so each followed URI has
+/// its own cache key and policy evaluation.
+pub(all) enum RedirectPolicy {
+  ReturnRedirect
+  FollowSameOrigin
+  FollowAnyOrigin
+} derive(Eq, Compare, Debug)
+
+///|
+pub(all) struct CachedClientOptions {
+  timeout_milliseconds : Int?
+  max_response_body_bytes : Int
+  redirect_policy : RedirectPolicy
+  max_redirects : Int
+} derive(Eq, Debug)
+
+///|
+pub fn CachedClientOptions::default() -> CachedClientOptions {
+  CachedClientOptions::{
+    timeout_milliseconds: None,
+    max_response_body_bytes: 8 * 1024 * 1024,
+    redirect_policy: ReturnRedirect,
+    max_redirects: 5,
+  }
+}
+
+///|
+pub fn CachedClientOptions::with_timeout(
+  self : CachedClientOptions,
+  milliseconds : Int,
+) -> CachedClientOptions {
+  CachedClientOptions::{
+    ..self,
+    timeout_milliseconds: if milliseconds > 0 {
+      Some(milliseconds)
+    } else {
+      None
+    },
+  }
+}
+
+///|
+pub fn CachedClientOptions::with_body_limit(
+  self : CachedClientOptions,
+  maximum : Int,
+) -> CachedClientOptions {
+  CachedClientOptions::{
+    ..self,
+    max_response_body_bytes: if maximum < 0 {
+      0
+    } else {
+      maximum
+    },
+  }
+}
+
+///|
+pub fn CachedClientOptions::with_redirects(
+  self : CachedClientOptions,
+  policy : RedirectPolicy,
+  maximum : Int,
+) -> CachedClientOptions {
+  CachedClientOptions::{
+    ..self,
+    redirect_policy: policy,
+    max_redirects: if maximum < 0 {
+      0
+    } else {
+      maximum
+    },
   }
 }
 
@@ -90,21 +180,72 @@ pub fn MoonbitAsyncHttpTransport::fixed(
 }
 
 ///|
+fn split_async_uri(uri : String) -> (String, String) raise AsyncAdapterError {
+  guard @mooncache.normalize_cache_uri(uri) is Some(normalized) else {
+    raise AsyncInvalidUri(uri)
+  }
+  guard @mooncache.cache_origin(normalized) is Some(origin) else {
+    raise AsyncInvalidUri(uri)
+  }
+  let suffix = normalized[origin.length():].to_owned()
+  let target = if suffix == "" {
+    "/"
+  } else if suffix.has_prefix("?") {
+    "/\{suffix}"
+  } else {
+    suffix
+  }
+  (origin, target)
+}
+
+///|
+fn async_request_method(
+  http_method : String,
+) -> @http.RequestMethod raise AsyncAdapterError {
+  match http_method {
+    "GET" => Get
+    "HEAD" => Head
+    "POST" => Post
+    "PUT" => Put
+    "DELETE" => Delete
+    "OPTIONS" => Options
+    "PATCH" => Patch
+    value => raise AsyncUnsupportedMethod(value)
+  }
+}
+
+///|
 async fn MoonbitAsyncHttpTransport::send(
   self : MoonbitAsyncHttpTransport,
   request : @mooncache.RuntimeRequest,
 ) -> @mooncache.TransportResponse {
   guard !@async.is_being_cancelled() else { raise AsyncRequestCancelled }
-  let headers = headers_to_async_http(request.meta.headers)
-  let (response, data) = match request.meta.http_method {
-    "GET" => {
-      guard request.body.length() == 0 else { raise AsyncGetBodyUnsupported }
-      @http.get(request.meta.uri, headers~)
-    }
-    "POST" => @http.post(request.meta.uri, request.body, headers~)
-    "PUT" => @http.put(request.meta.uri, request.body, headers~)
-    http_method => raise AsyncUnsupportedMethod(http_method)
+  if request.meta.http_method == "GET" && request.body.length() > 0 {
+    raise AsyncGetBodyUnsupported
   }
+  if request.meta.http_method == "HEAD" && request.body.length() > 0 {
+    raise AsyncGetBodyUnsupported
+  }
+  let (origin, target) = split_async_uri(request.meta.uri)
+  let headers = headers_to_async_http(request.meta.headers)
+  let client = @http.Client(origin)
+  defer client.close()
+  client.request(
+    async_request_method(request.meta.http_method),
+    target,
+    extra_headers=headers,
+  )
+  if request.body.length() > 0 {
+    client.write(request.body)
+  }
+  let response = client.end_request()
+  let body = if request.meta.http_method == "HEAD" {
+    client.skip_response_body()
+    b""
+  } else {
+    client.read_all().binary()
+  }
+  guard !@async.is_being_cancelled() else { raise AsyncRequestCancelled }
   let response_time = (self.response_clock)()
   let meta = @mooncache.ResponseMeta::complete(
     response.code,
@@ -112,7 +253,7 @@ async fn MoonbitAsyncHttpTransport::send(
     request.meta.request_time,
     response_time,
   )
-  @mooncache.TransportResponse::new(meta, data.binary())
+  @mooncache.TransportResponse::new(meta, body)
 }
 
 ///|
@@ -124,9 +265,18 @@ pub impl AsyncTransport for MoonbitAsyncHttpTransport with fn execute(
 }
 
 ///|
+/// Deterministic async origin result used by examples, timeout tests, and
+/// network-failure tests.
+pub(all) enum AsyncTransportOutcome {
+  AsyncTransportSuccess(@mooncache.TransportResponse)
+  AsyncTransportFailure(String)
+  AsyncTransportDelayed(Int, @mooncache.TransportResponse)
+} derive(Eq, Debug)
+
+///|
 /// Deterministic async origin used by examples and tests.
 pub struct ScriptedAsyncTransport {
-  priv responses : Array[@mooncache.TransportResponse]
+  priv outcomes : Array[AsyncTransportOutcome]
   priv requests : Array[@mooncache.RuntimeRequest]
   priv mut cursor : Int
 }
@@ -135,7 +285,18 @@ pub struct ScriptedAsyncTransport {
 pub fn ScriptedAsyncTransport::new(
   responses : Array[@mooncache.TransportResponse],
 ) -> ScriptedAsyncTransport {
-  ScriptedAsyncTransport::{ responses, requests: [], cursor: 0 }
+  ScriptedAsyncTransport::{
+    outcomes: responses.map(fn(response) { AsyncTransportSuccess(response) }),
+    requests: [],
+    cursor: 0,
+  }
+}
+
+///|
+pub fn ScriptedAsyncTransport::with_outcomes(
+  outcomes : Array[AsyncTransportOutcome],
+) -> ScriptedAsyncTransport {
+  ScriptedAsyncTransport::{ outcomes, requests: [], cursor: 0 }
 }
 
 ///|
@@ -151,17 +312,24 @@ pub fn ScriptedAsyncTransport::calls(
 }
 
 ///|
-fn ScriptedAsyncTransport::send(
+async fn ScriptedAsyncTransport::send(
   self : ScriptedAsyncTransport,
   request : @mooncache.RuntimeRequest,
-) -> @mooncache.TransportResponse raise AsyncAdapterError {
+) -> @mooncache.TransportResponse {
   self.requests.push(request.copy())
-  guard self.cursor < self.responses.length() else {
-    raise AsyncScriptExhausted
-  }
-  let response = self.responses[self.cursor].copy()
+  guard self.cursor < self.outcomes.length() else { raise AsyncScriptExhausted }
+  let outcome = self.outcomes[self.cursor]
   self.cursor = self.cursor + 1
-  response
+  match outcome {
+    AsyncTransportSuccess(response) => response.copy()
+    AsyncTransportFailure(message) => raise AsyncScriptedFailure(message)
+    AsyncTransportDelayed(milliseconds, response) => {
+      if milliseconds > 0 {
+        @async.sleep(milliseconds)
+      }
+      response.copy()
+    }
+  }
 }
 
 ///|
@@ -184,6 +352,7 @@ pub struct AsyncCachedRuntime[S, T] {
   priv store : S
   priv origin : T
   priv options : @mooncache.CacheOptions
+  priv max_response_body_bytes : Int
 }
 
 ///|
@@ -192,7 +361,27 @@ pub fn[S, T] AsyncCachedRuntime::new(
   origin : T,
   options : @mooncache.CacheOptions,
 ) -> AsyncCachedRuntime[S, T] {
-  AsyncCachedRuntime::{ store, origin, options }
+  AsyncCachedRuntime::{
+    store,
+    origin,
+    options,
+    max_response_body_bytes: 8 * 1024 * 1024,
+  }
+}
+
+///|
+pub fn[S, T] AsyncCachedRuntime::with_body_limit(
+  self : AsyncCachedRuntime[S, T],
+  maximum : Int,
+) -> AsyncCachedRuntime[S, T] {
+  AsyncCachedRuntime::{
+    ..self,
+    max_response_body_bytes: if maximum < 0 {
+      0
+    } else {
+      maximum
+    },
+  }
 }
 
 ///|
@@ -210,6 +399,12 @@ pub async fn[S : @mooncache.CacheStore, T : AsyncTransport] AsyncCachedRuntime::
       let calls = probe.calls()
       guard calls.length() == 1 else { raise AsyncProbeDidNotRecordRequest }
       let upstream = AsyncTransport::execute(self.origin, calls[0])
+      guard upstream.body.length() <= self.max_response_body_bytes else {
+        raise AsyncBodyTooLarge(
+          actual=upstream.body.length(),
+          maximum=self.max_response_body_bytes,
+        )
+      }
       let replay = @mooncache.FakeTransport::new([upstream])
       @mooncache.execute_cached(self.store, replay, self.options, request, now) catch {
         error => raise AsyncCoreFailure(error.message())
@@ -223,4 +418,170 @@ pub fn[S : @mooncache.CacheStore, T] AsyncCachedRuntime::store_stats(
   self : AsyncCachedRuntime[S, T],
 ) -> @mooncache.StoreStats {
   @mooncache.CacheStore::stats(self.store)
+}
+
+///|
+fn is_redirect_status(status : Int) -> Bool {
+  status == 301 ||
+  status == 302 ||
+  status == 303 ||
+  status == 307 ||
+  status == 308
+}
+
+///|
+fn redirected_method(http_method : String, status : Int) -> String {
+  if status == 303 {
+    if http_method == "HEAD" {
+      "HEAD"
+    } else {
+      "GET"
+    }
+  } else if (status == 301 || status == 302) && http_method == "POST" {
+    "GET"
+  } else {
+    http_method
+  }
+}
+
+///|
+fn redirect_request(
+  request : @mooncache.RuntimeRequest,
+  response : @mooncache.RuntimeResponse,
+  policy : RedirectPolicy,
+) -> @mooncache.RuntimeRequest? raise AsyncAdapterError {
+  if policy is ReturnRedirect || !is_redirect_status(response.meta.status) {
+    return None
+  }
+  guard response.meta.headers.get("location") is Some(location) else {
+    return None
+  }
+  guard @mooncache.resolve_related_uri(request.meta.uri, location)
+    is Some(target) else {
+    raise AsyncRedirectRejected(location)
+  }
+  let same_origin = @mooncache.same_cache_origin(request.meta.uri, target)
+  if policy is FollowSameOrigin && !same_origin {
+    raise AsyncRedirectRejected(target)
+  }
+  let headers = request.meta.headers.copy()
+  if !same_origin {
+    ignore(headers.remove("authorization"))
+    ignore(headers.remove("proxy-authorization"))
+    ignore(headers.remove("cookie"))
+  }
+  let next_method = redirected_method(
+    request.meta.http_method,
+    response.meta.status,
+  )
+  let body = if next_method == request.meta.http_method {
+    request.body
+  } else {
+    ignore(headers.remove("content-length"))
+    ignore(headers.remove("content-type"))
+    b""
+  }
+  Some(
+    @mooncache.RuntimeRequest::new(
+      @mooncache.RequestMeta::new(
+        next_method,
+        target,
+        headers,
+        request.meta.request_time,
+      ),
+      body,
+    ),
+  )
+}
+
+///|
+/// High-level native cached HTTP client.
+///
+/// Redirects are resolved above the cache runtime. Consequently the redirect
+/// response and every followed target retain separate cache keys, avoiding
+/// accidental aliasing between origins or negotiated resources.
+pub struct CachedClient[S, T] {
+  priv runtime : AsyncCachedRuntime[S, T]
+  priv clock : () -> @mooncache.Timestamp
+  priv client_options : CachedClientOptions
+}
+
+///|
+pub fn[S, T] CachedClient::new(
+  store : S,
+  origin : T,
+  cache_options : @mooncache.CacheOptions,
+  clock? : () -> @mooncache.Timestamp = fn() { @mooncache.Timestamp::zero() },
+  client_options? : CachedClientOptions = CachedClientOptions::default(),
+) -> CachedClient[S, T] {
+  let runtime = AsyncCachedRuntime::new(store, origin, cache_options).with_body_limit(
+    client_options.max_response_body_bytes,
+  )
+  CachedClient::{ runtime, clock, client_options }
+}
+
+///|
+async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_once(
+  self : CachedClient[S, T],
+  request : @mooncache.RuntimeRequest,
+  now : @mooncache.Timestamp,
+) -> @mooncache.RuntimeResponse {
+  match self.client_options.timeout_milliseconds {
+    Some(milliseconds) =>
+      @async.with_timeout(
+        milliseconds,
+        () => self.runtime.execute(request, now),
+        error=AsyncRequestTimedOut(milliseconds),
+      )
+    None => self.runtime.execute(request, now)
+  }
+}
+
+///|
+pub async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute(
+  self : CachedClient[S, T],
+  request : @mooncache.RuntimeRequest,
+) -> @mooncache.RuntimeResponse {
+  let now = (self.clock)()
+  let mut current = request.with_request_time(now)
+  for redirects = 0; ; redirects = redirects + 1 {
+    let response = self.execute_once(current, now)
+    guard redirect_request(
+        current,
+        response,
+        self.client_options.redirect_policy,
+      )
+      is Some(next) else {
+      return response
+    }
+    if redirects >= self.client_options.max_redirects {
+      raise AsyncTooManyRedirects(self.client_options.max_redirects)
+    }
+    current = next
+  }
+}
+
+///|
+pub async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::get(
+  self : CachedClient[S, T],
+  uri : String,
+  headers? : @mooncache.HeaderMap = @mooncache.HeaderMap::new(),
+) -> @mooncache.RuntimeResponse {
+  self.execute(@mooncache.RuntimeRequest::get(uri).with_headers(headers))
+}
+
+///|
+pub async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::head(
+  self : CachedClient[S, T],
+  uri : String,
+  headers? : @mooncache.HeaderMap = @mooncache.HeaderMap::new(),
+) -> @mooncache.RuntimeResponse {
+  self.execute(@mooncache.RuntimeRequest::head(uri).with_headers(headers))
+}
+
+///|
+pub fn[S : @mooncache.CacheStore, T] CachedClient::store_stats(
+  self : CachedClient[S, T],
+) -> @mooncache.StoreStats {
+  self.runtime.store_stats()
 }

@@ -460,7 +460,11 @@ pub(all) struct RuntimeRequest {
 } derive(Eq, @debug.Debug)
 pub fn RuntimeRequest::copy(Self) -> Self
 pub fn RuntimeRequest::get(String) -> Self
+pub fn RuntimeRequest::head(String) -> Self
 pub fn RuntimeRequest::new(RequestMeta, Bytes) -> Self
+pub fn RuntimeRequest::with_body(Self, Bytes) -> Self
+pub fn RuntimeRequest::with_headers(Self, HeaderMap) -> Self
+pub fn RuntimeRequest::with_request_time(Self, Timestamp) -> Self
 
 pub(all) struct RuntimeResponse {
   meta : ResponseMeta
