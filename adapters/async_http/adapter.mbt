@@ -659,6 +659,7 @@ pub struct CachedClient[S, T] {
   priv request_group : @request_group.RequestGroup[@mooncache.RuntimeResponse]
   priv revalidation_group : @request_group.RequestGroup[Unit]
   priv background_spawn : ((async () -> Unit) -> Unit)?
+  priv telemetry : @mooncache.CacheTelemetry
 }
 
 ///|
@@ -683,6 +684,7 @@ pub fn[S, T] CachedClient::new(
     }),
     revalidation_group: @request_group.RequestGroup::new(fn(_unit : Unit) { () }),
     background_spawn: None,
+    telemetry: @mooncache.CacheTelemetry::new(),
   }
 }
 
@@ -697,6 +699,14 @@ pub fn[S, T, X] CachedClient::with_background_group(
     ..self,
     background_spawn: Some(fn(job) { group.spawn_bg(allow_failure=true, job) }),
   }
+}
+
+///|
+pub fn[S, T, O : @mooncache.CacheObserver] CachedClient::with_observer(
+  self : CachedClient[S, T],
+  observer : O,
+) -> CachedClient[S, T] {
+  CachedClient::{ ..self, telemetry: self.telemetry.with_observer(observer) }
 }
 
 ///|
@@ -745,33 +755,51 @@ async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_on
   request : @mooncache.RuntimeRequest,
   now : @mooncache.Timestamp,
 ) -> @mooncache.RuntimeResponse {
-  try {
-    match self.client_options.timeout_milliseconds {
-      Some(milliseconds) =>
-        @async.with_timeout(
-          milliseconds,
-          () => self.runtime.execute(request, now),
-          error=AsyncRequestTimedOut(milliseconds),
-        )
-      None => self.runtime.execute(request, now)
-    }
-  } catch {
-    AsyncRequestTimedOut(milliseconds) as error => {
-      if self.client_options.serve_stale_on_timeout {
-        guard self.runtime.stale_candidate(
-            request,
-            now,
-            AsyncStaleIfErrorUse("client deadline exceeded \{milliseconds}ms"),
+  let before = self.runtime.store_stats()
+  let response = try {
+    try {
+      match self.client_options.timeout_milliseconds {
+        Some(milliseconds) =>
+          @async.with_timeout(
+            milliseconds,
+            () => self.runtime.execute(request, now),
+            error=AsyncRequestTimedOut(milliseconds),
           )
-          is Some(response) else {
+        None => self.runtime.execute(request, now)
+      }
+    } catch {
+      AsyncRequestTimedOut(milliseconds) as error =>
+        if self.client_options.serve_stale_on_timeout {
+          guard self.runtime.stale_candidate(
+              request,
+              now,
+              AsyncStaleIfErrorUse("client deadline exceeded \{milliseconds}ms"),
+            )
+            is Some(response) else {
+            raise error
+          }
+          response
+        } else {
           raise error
         }
-        return response
-      }
+      other => raise other
+    }
+  } catch {
+    error if @async.is_being_cancelled() => raise error
+    error => {
+      let after = self.runtime.store_stats()
+      self.telemetry.record_upstream_error(
+        request,
+        error.to_string(),
+        before,
+        after,
+      )
       raise error
     }
-    other => raise other
   }
+  let after = self.runtime.store_stats()
+  self.telemetry.record_response(request, response, before, after)
+  response
 }
 
 ///|
@@ -800,12 +828,29 @@ fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::maybe_serve_stal
   spawn(async fn() {
     let background_now = (self.clock)()
     let background_request = forced.with_request_time(background_now)
-    ignore(
+    let grouped : Result[@request_group.RequestGroupResult[Unit], Error] = Ok(
       self.revalidation_group.run("swr:\{key}", async fn() {
-        ignore(self.execute_once_direct(background_request, background_now))
+        self.telemetry.record_background_revalidation(background_request)
+        ignore(self.execute_once_direct(background_request, background_now)) catch {
+          error if @async.is_being_cancelled() => raise error
+          error => {
+            self.telemetry.record_background_failure(
+              background_request,
+              error.to_string(),
+            )
+            raise error
+          }
+        }
       }),
     ) catch {
-      _ => ()
+      error => Err(error)
+    }
+    match grouped {
+      Ok(result) =>
+        if result.coalesced {
+          self.telemetry.record_coalesced_operation(background_request)
+        }
+      Err(_) => ()
     }
   })
   Some(response)
@@ -817,8 +862,13 @@ async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_on
   request : @mooncache.RuntimeRequest,
   now : @mooncache.Timestamp,
 ) -> @mooncache.RuntimeResponse {
+  let swr_before = self.runtime.store_stats()
   match self.maybe_serve_stale_while_revalidate(request, now) {
-    Some(response) => return response
+    Some(response) => {
+      let swr_after = self.runtime.store_stats()
+      self.telemetry.record_response(request, response, swr_before, swr_after)
+      return response
+    }
     None => ()
   }
   match request_coalescing_key(request) {
@@ -830,6 +880,7 @@ async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_on
       let response = grouped.value
       if grouped.coalesced {
         response.trace.add_reason(@mooncache.CacheReason::new(RuntimeCoalesced))
+        self.telemetry.record_coalesced(request, response)
       }
       response
     }
@@ -890,4 +941,44 @@ pub fn[S, T] CachedClient::coalescing_stats(
   self : CachedClient[S, T],
 ) -> @request_group.RequestGroupStats {
   self.request_group.stats()
+}
+
+///|
+pub fn[S, T] CachedClient::background_revalidation_stats(
+  self : CachedClient[S, T],
+) -> @request_group.RequestGroupStats {
+  self.revalidation_group.stats()
+}
+
+///|
+pub fn[S, T] CachedClient::stats_snapshot(
+  self : CachedClient[S, T],
+) -> @mooncache.CacheStatsSnapshot {
+  let foreground = self.request_group.stats().coalesced
+  let background = self.revalidation_group.stats().coalesced
+  let total = if foreground >= @mooncache.MAX_DELTA_SECONDS - background {
+    @mooncache.MAX_DELTA_SECONDS
+  } else {
+    foreground + background
+  }
+  self.telemetry.snapshot().with_coalesced_total(total)
+}
+
+///|
+pub fn[S : @mooncache.CacheStore, T] CachedClient::purge(
+  self : CachedClient[S, T],
+  uri : String,
+) -> Int {
+  let removed = @mooncache.CacheStore::invalidate_uri(self.runtime.store, uri)
+  self.telemetry.record_purge("PURGE", uri, removed)
+  removed
+}
+
+///|
+pub fn[S : @mooncache.CacheStore, T] CachedClient::clear(
+  self : CachedClient[S, T],
+) -> Unit {
+  let before = self.runtime.store_stats().entries
+  @mooncache.CacheStore::clear(self.runtime.store)
+  self.telemetry.record_purge("CLEAR", "*", before)
 }

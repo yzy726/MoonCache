@@ -162,6 +162,39 @@ pub(all) struct CacheDecision {
   storage : StorageDecision
 } derive(Eq, @debug.Debug)
 
+pub(all) struct CacheEvent {
+  kind : CacheEventKind
+  http_method : String
+  uri : String
+  status : Int?
+  body_bytes : Int64
+  count : Int64
+  duration_milliseconds : Int64
+  detail : String?
+} derive(Eq, @debug.Debug)
+pub fn CacheEvent::new(CacheEventKind, RequestMeta, status? : Int?, body_bytes? : Int64, count? : Int64, duration_milliseconds? : Int64, detail? : String?) -> Self
+
+pub(all) enum CacheEventKind {
+  CacheRequestCompleted
+  CacheHit
+  CacheMiss
+  CacheBypass
+  CacheStored
+  CacheRevalidated
+  CacheNotModified
+  CacheStaleServed
+  CacheUpstreamFetched
+  CacheUpstreamError
+  CacheEvicted
+  CachePurged
+  CacheCoalesced
+  CacheBytesSaved
+  CacheUpstreamRequestSaved
+  CacheBackgroundRevalidation
+  CacheBackgroundFailure
+} derive(Compare, Eq, @debug.Debug)
+pub fn CacheEventKind::label(Self) -> String
+
 pub(all) enum CacheMode {
   Private
   Shared
@@ -272,6 +305,56 @@ pub(all) struct CacheScenario {
   expected : ScenarioExpected?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub struct CacheStats {
+  // private fields
+}
+pub fn CacheStats::new() -> Self
+pub fn CacheStats::snapshot(Self) -> CacheStatsSnapshot
+pub impl CacheObserver for CacheStats
+
+pub(all) struct CacheStatsSnapshot {
+  requests : Int64
+  hits : Int64
+  misses : Int64
+  bypasses : Int64
+  stores : Int64
+  revalidations : Int64
+  not_modified : Int64
+  stale_served : Int64
+  upstream_fetches : Int64
+  upstream_errors : Int64
+  evictions : Int64
+  purges : Int64
+  purged_entries : Int64
+  coalesced_requests : Int64
+  saved_bytes : Int64
+  saved_upstream_requests : Int64
+  validation_samples : Int64
+  total_validation_milliseconds : Int64
+  average_validation_milliseconds : Int64
+  background_revalidations : Int64
+  background_failures : Int64
+} derive(Eq, @debug.Debug)
+pub fn CacheStatsSnapshot::hit_rate_per_mille(Self) -> Int
+pub fn CacheStatsSnapshot::json_report(Self) -> String
+pub fn CacheStatsSnapshot::text_report(Self) -> String
+pub fn CacheStatsSnapshot::to_json(Self) -> Json
+pub fn CacheStatsSnapshot::with_coalesced_total(Self, Int64) -> Self
+
+pub struct CacheTelemetry {
+  // private fields
+}
+pub fn CacheTelemetry::new() -> Self
+pub fn CacheTelemetry::record_background_failure(Self, RuntimeRequest, String) -> Unit
+pub fn CacheTelemetry::record_background_revalidation(Self, RuntimeRequest) -> Unit
+pub fn CacheTelemetry::record_coalesced(Self, RuntimeRequest, RuntimeResponse) -> Unit
+pub fn CacheTelemetry::record_coalesced_operation(Self, RuntimeRequest) -> Unit
+pub fn CacheTelemetry::record_purge(Self, String, String, Int) -> Unit
+pub fn CacheTelemetry::record_response(Self, RuntimeRequest, RuntimeResponse, StoreStats, StoreStats) -> Unit
+pub fn CacheTelemetry::record_upstream_error(Self, RuntimeRequest, String, StoreStats, StoreStats) -> Unit
+pub fn CacheTelemetry::snapshot(Self) -> CacheStatsSnapshot
+pub fn[O : CacheObserver] CacheTelemetry::with_observer(Self, O) -> Self
+
 pub(all) struct CacheTrace {
   mut action : CacheActionKind
   reasons : Array[CacheReason]
@@ -294,9 +377,13 @@ pub fn CacheTrace::to_json(Self) -> Json
 pub struct CachedRuntime[S, T] {
   // private fields
 }
+pub fn[S : CacheStore, T] CachedRuntime::clear(Self[S, T]) -> Unit
 pub fn[S : CacheStore, T : Transport] CachedRuntime::execute(Self[S, T], RuntimeRequest, Timestamp) -> RuntimeResponse raise RuntimeError
 pub fn[S, T] CachedRuntime::new(S, T, CacheOptions) -> Self[S, T]
+pub fn[S : CacheStore, T] CachedRuntime::purge(Self[S, T], String) -> Int
+pub fn[S, T] CachedRuntime::stats_snapshot(Self[S, T]) -> CacheStatsSnapshot
 pub fn[S : CacheStore, T] CachedRuntime::store_stats(Self[S, T]) -> StoreStats
+pub fn[S, T, O : CacheObserver] CachedRuntime::with_observer(Self[S, T], O) -> Self[S, T]
 
 pub struct DeltaSeconds(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn DeltaSeconds::from_seconds(Int64) -> Self
@@ -664,6 +751,10 @@ pub fn VarySpec::default() -> Self
 // Type aliases
 
 // Traits
+pub(open) trait CacheObserver {
+  fn observe(Self, CacheEvent) -> Unit
+}
+
 pub(open) trait CacheStore {
   fn find_variants(Self, PrimaryCacheKey) -> Array[StoredEntry]
   fn put(Self, StoredEntry) -> StorePutResult

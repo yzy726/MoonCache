@@ -487,6 +487,7 @@ pub struct CachedRuntime[S, T] {
   priv store : S
   priv transport : T
   priv options : CacheOptions
+  priv telemetry : CacheTelemetry
 }
 
 ///|
@@ -495,7 +496,15 @@ pub fn[S, T] CachedRuntime::new(
   transport : T,
   options : CacheOptions,
 ) -> CachedRuntime[S, T] {
-  CachedRuntime::{ store, transport, options }
+  CachedRuntime::{ store, transport, options, telemetry: CacheTelemetry::new() }
+}
+
+///|
+pub fn[S, T, O : CacheObserver] CachedRuntime::with_observer(
+  self : CachedRuntime[S, T],
+  observer : O,
+) -> CachedRuntime[S, T] {
+  CachedRuntime::{ ..self, telemetry: self.telemetry.with_observer(observer) }
 }
 
 ///|
@@ -504,7 +513,28 @@ pub fn[S : CacheStore, T : Transport] CachedRuntime::execute(
   request : RuntimeRequest,
   now : Timestamp,
 ) -> RuntimeResponse raise RuntimeError {
-  execute_cached(self.store, self.transport, self.options, request, now)
+  let before = CacheStore::stats(self.store)
+  let response = execute_cached(
+    self.store,
+    self.transport,
+    self.options,
+    request,
+    now,
+  ) catch {
+    error => {
+      let after = CacheStore::stats(self.store)
+      self.telemetry.record_upstream_error(
+        request,
+        error.message(),
+        before,
+        after,
+      )
+      raise error
+    }
+  }
+  let after = CacheStore::stats(self.store)
+  self.telemetry.record_response(request, response, before, after)
+  response
 }
 
 ///|
@@ -512,4 +542,30 @@ pub fn[S : CacheStore, T] CachedRuntime::store_stats(
   self : CachedRuntime[S, T],
 ) -> StoreStats {
   CacheStore::stats(self.store)
+}
+
+///|
+pub fn[S, T] CachedRuntime::stats_snapshot(
+  self : CachedRuntime[S, T],
+) -> CacheStatsSnapshot {
+  self.telemetry.snapshot()
+}
+
+///|
+pub fn[S : CacheStore, T] CachedRuntime::purge(
+  self : CachedRuntime[S, T],
+  uri : String,
+) -> Int {
+  let removed = CacheStore::invalidate_uri(self.store, uri)
+  self.telemetry.record_purge("PURGE", uri, removed)
+  removed
+}
+
+///|
+pub fn[S : CacheStore, T] CachedRuntime::clear(
+  self : CachedRuntime[S, T],
+) -> Unit {
+  let before = CacheStore::stats(self.store).entries
+  CacheStore::clear(self.store)
+  self.telemetry.record_purge("CLEAR", "*", before)
 }

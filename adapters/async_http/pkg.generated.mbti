@@ -48,13 +48,18 @@ pub(all) enum AsyncTransportOutcome {
 pub struct CachedClient[S, T] {
   // private fields
 }
+pub fn[S, T] CachedClient::background_revalidation_stats(Self[S, T]) -> @concurrency.RequestGroupStats
+pub fn[S : @MoonCache.CacheStore, T] CachedClient::clear(Self[S, T]) -> Unit
 pub fn[S, T] CachedClient::coalescing_stats(Self[S, T]) -> @concurrency.RequestGroupStats
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::execute(Self[S, T], @MoonCache.RuntimeRequest) -> @MoonCache.RuntimeResponse
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::get(Self[S, T], String, headers? : @MoonCache.HeaderMap) -> @MoonCache.RuntimeResponse
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::head(Self[S, T], String, headers? : @MoonCache.HeaderMap) -> @MoonCache.RuntimeResponse
 pub fn[S, T] CachedClient::new(S, T, @MoonCache.CacheOptions, clock? : () -> @MoonCache.Timestamp, client_options? : CachedClientOptions) -> Self[S, T]
+pub fn[S : @MoonCache.CacheStore, T] CachedClient::purge(Self[S, T], String) -> Int
+pub fn[S, T] CachedClient::stats_snapshot(Self[S, T]) -> @MoonCache.CacheStatsSnapshot
 pub fn[S : @MoonCache.CacheStore, T] CachedClient::store_stats(Self[S, T]) -> @MoonCache.StoreStats
 pub fn[S, T, X] CachedClient::with_background_group(Self[S, T], @async.TaskGroup[X]) -> Self[S, T]
+pub fn[S, T, O : @MoonCache.CacheObserver] CachedClient::with_observer(Self[S, T], O) -> Self[S, T]
 
 pub(all) struct CachedClientOptions {
   timeout_milliseconds : Int?

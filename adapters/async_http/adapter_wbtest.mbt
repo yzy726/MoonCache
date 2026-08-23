@@ -23,6 +23,24 @@ struct DelayedFailureTransport {
 }
 
 ///|
+struct AsyncRecordingObserver {
+  events : Array[@mooncache.CacheEvent]
+}
+
+///|
+fn AsyncRecordingObserver::new() -> AsyncRecordingObserver {
+  AsyncRecordingObserver::{ events: [] }
+}
+
+///|
+impl @mooncache.CacheObserver for AsyncRecordingObserver with fn observe(
+  self,
+  event,
+) {
+  self.events.push(event)
+}
+
+///|
 fn DelayedFailureTransport::new() -> DelayedFailureTransport {
   DelayedFailureTransport::{ calls: [] }
 }
@@ -224,6 +242,33 @@ async test "cached client GET uses its injected clock and caches the result" {
   assert_true(second.source is CacheSource)
   assert_eq(second.body, b"cached")
   assert_eq(origin.call_count(), 1)
+}
+
+///|
+async test "cached client observers receive portable telemetry events" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = ScriptedAsyncTransport::new([
+    async_response(200, [("Cache-Control", "max-age=60")], b"cached", 0L, 0L),
+  ])
+  let observer = AsyncRecordingObserver::new()
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+  ).with_observer(observer)
+  let uri = "https://example.test/observed"
+  ignore(client.get(uri))
+  ignore(client.get(uri))
+  assert_eq(client.purge(uri), 1)
+  let snapshot = client.stats_snapshot()
+  assert_eq(snapshot.requests, 2L)
+  assert_eq(snapshot.hits, 1L)
+  assert_eq(snapshot.misses, 1L)
+  assert_eq(snapshot.upstream_fetches, 1L)
+  assert_eq(snapshot.saved_upstream_requests, 1L)
+  assert_eq(snapshot.purges, 1L)
+  assert_true(observer.events.any(fn(event) { event.kind is CacheHit }))
+  assert_true(observer.events.any(fn(event) { event.kind is CachePurged }))
 }
 
 ///|
@@ -540,6 +585,14 @@ async test "twenty concurrent cached GETs use one upstream request" {
   assert_eq(stats.coalesced, 19)
   assert_eq(stats.active_flights, 0)
   assert_eq(store.stats().entries, 1)
+  let telemetry = client.stats_snapshot()
+  assert_eq(telemetry.requests, 20L)
+  assert_eq(telemetry.misses, 1L)
+  assert_eq(telemetry.stores, 1L)
+  assert_eq(telemetry.upstream_fetches, 1L)
+  assert_eq(telemetry.coalesced_requests, 19L)
+  assert_eq(telemetry.saved_upstream_requests, 19L)
+  assert_eq(telemetry.saved_bytes, 114L)
 }
 
 ///|
@@ -609,6 +662,11 @@ async test "all coalesced waiters receive the same upstream failure" {
   assert_eq(store.stats().entries, 0)
   assert_eq(client.coalescing_stats().failed, 1)
   assert_eq(client.coalescing_stats().active_flights, 0)
+  let telemetry = client.stats_snapshot()
+  assert_eq(telemetry.upstream_fetches, 1L)
+  assert_eq(telemetry.upstream_errors, 1L)
+  assert_eq(telemetry.coalesced_requests, 7L)
+  assert_eq(telemetry.saved_upstream_requests, 7L)
 }
 
 ///|
@@ -698,6 +756,12 @@ async test "stale-while-revalidate returns immediately and a 304 refreshes it" {
     assert_true(refreshed.source is CacheSource)
     assert_eq(refreshed.body, b"cached")
     assert_eq(origin.call_count(), 2)
+    let telemetry = client.stats_snapshot()
+    assert_eq(telemetry.stale_served, 1L)
+    assert_eq(telemetry.revalidations, 1L)
+    assert_eq(telemetry.not_modified, 1L)
+    assert_eq(telemetry.background_revalidations, 1L)
+    assert_eq(telemetry.background_failures, 0L)
   }
 }
 
@@ -751,6 +815,12 @@ async test "concurrent stale-while-revalidate requests share one refresh" {
     @async.sleep(25)
     assert_eq(origin.call_count(), 2)
     assert_eq(store.variant_count("https://example.test/swr-shared"), 1)
+    let telemetry = client.stats_snapshot()
+    assert_eq(telemetry.stale_served, 12L)
+    assert_eq(telemetry.background_revalidations, 1L)
+    assert_eq(telemetry.coalesced_requests, 11L)
+    assert_eq(telemetry.saved_upstream_requests, 11L)
+    assert_eq(client.background_revalidation_stats().coalesced, 11L)
   }
 }
 
@@ -869,6 +939,11 @@ async test "failed background revalidation keeps the stale entry" {
     @async.sleep(5)
     assert_eq(origin.call_count(), 2)
     assert_eq(store.variant_count(uri), 1)
+    let telemetry = client.stats_snapshot()
+    assert_eq(telemetry.stale_served, 1L)
+    assert_eq(telemetry.upstream_errors, 1L)
+    assert_eq(telemetry.background_revalidations, 1L)
+    assert_eq(telemetry.background_failures, 1L)
   }
 }
 
