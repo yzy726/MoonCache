@@ -27,6 +27,17 @@ pub(all) struct RuntimeResponse {
 } derive(Eq, Debug)
 
 ///|
+/// Deep-copy mutable metadata and trace state while sharing immutable bytes.
+pub fn RuntimeResponse::copy(self : RuntimeResponse) -> RuntimeResponse {
+  RuntimeResponse::{
+    meta: ResponseMeta::{ ..self.meta, headers: self.meta.headers.copy() },
+    body: self.body,
+    source: self.source,
+    trace: self.trace.copy(),
+  }
+}
+
+///|
 pub suberror RuntimeError {
   RuntimeTransportFailure(String)
 } derive(Eq, Debug)

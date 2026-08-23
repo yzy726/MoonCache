@@ -504,6 +504,7 @@ pub struct CachedClient[S, T] {
   priv runtime : AsyncCachedRuntime[S, T]
   priv clock : () -> @mooncache.Timestamp
   priv client_options : CachedClientOptions
+  priv request_group : @request_group.RequestGroup[@mooncache.RuntimeResponse]
 }
 
 ///|
@@ -517,11 +518,60 @@ pub fn[S, T] CachedClient::new(
   let runtime = AsyncCachedRuntime::new(store, origin, cache_options).with_body_limit(
     client_options.max_response_body_bytes,
   )
-  CachedClient::{ runtime, clock, client_options }
+  CachedClient::{
+    runtime,
+    clock,
+    client_options,
+    request_group: @request_group.RequestGroup::new(fn(
+      response : @mooncache.RuntimeResponse,
+    ) {
+      response.copy()
+    }),
+  }
 }
 
 ///|
-async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_once(
+fn coalescing_component(label : String, value : String) -> String {
+  "\{label.length()}:\{label}\{value.length()}:\{value};"
+}
+
+///|
+/// Hash every representation-affecting request field. This is intentionally
+/// conservative: semantically equivalent requests can form separate flights,
+/// but distinct Vary candidates can never be merged by omission.
+fn request_coalescing_key(request : @mooncache.RuntimeRequest) -> String? {
+  let http_method = request.meta.http_method
+  if (http_method != "GET" && http_method != "HEAD") ||
+    request.body.length() > 0 {
+    return None
+  }
+  let directives = @mooncache.parse_cache_control(
+    request.meta.headers.get("cache-control").unwrap_or(""),
+  )
+  if directives.no_store || request.meta.headers.contains("range") {
+    return None
+  }
+  guard @mooncache.normalize_cache_uri(request.meta.uri) is Some(uri) else {
+    return None
+  }
+  let names = request.meta.headers.names()
+  names.sort()
+  let mut canonical = coalescing_component("method", http_method) +
+    coalescing_component("uri", uri)
+  for name in names {
+    canonical = canonical + coalescing_component("header", name)
+    let values = request.meta.headers.get_all(name)
+    canonical = canonical +
+      coalescing_component("count", values.length().to_string())
+    for value in values {
+      canonical = canonical + coalescing_component("value", value)
+    }
+  }
+  Some(@crypto.bytes_to_hex_string(@crypto.sha256(@utf8.encode(canonical))))
+}
+
+///|
+async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_once_direct(
   self : CachedClient[S, T],
   request : @mooncache.RuntimeRequest,
   now : @mooncache.Timestamp,
@@ -534,6 +584,27 @@ async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_on
         error=AsyncRequestTimedOut(milliseconds),
       )
     None => self.runtime.execute(request, now)
+  }
+}
+
+///|
+async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_once(
+  self : CachedClient[S, T],
+  request : @mooncache.RuntimeRequest,
+  now : @mooncache.Timestamp,
+) -> @mooncache.RuntimeResponse {
+  match request_coalescing_key(request) {
+    None => self.execute_once_direct(request, now)
+    Some(key) => {
+      let grouped = self.request_group.run(key, () => {
+        self.execute_once_direct(request, now)
+      })
+      let response = grouped.value
+      if grouped.coalesced {
+        response.trace.add_reason(@mooncache.CacheReason::new(RuntimeCoalesced))
+      }
+      response
+    }
   }
 }
 
@@ -584,4 +655,11 @@ pub fn[S : @mooncache.CacheStore, T] CachedClient::store_stats(
   self : CachedClient[S, T],
 ) -> @mooncache.StoreStats {
   self.runtime.store_stats()
+}
+
+///|
+pub fn[S, T] CachedClient::coalescing_stats(
+  self : CachedClient[S, T],
+) -> @request_group.RequestGroupStats {
+  self.request_group.stats()
 }

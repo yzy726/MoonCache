@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Ag108/MoonCache/concurrency"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct RequestGroup[X] {
+  // private fields
+}
+pub fn[X] RequestGroup::new((X) -> X) -> Self[X]
+pub async fn[X] RequestGroup::run(Self[X], String, async () -> X) -> RequestGroupResult[X]
+pub fn[X] RequestGroup::stats(Self[X]) -> RequestGroupStats
+
+pub(all) struct RequestGroupResult[X] {
+  value : X
+  coalesced : Bool
+}
+
+pub(all) struct RequestGroupStats {
+  started : Int64
+  coalesced : Int64
+  succeeded : Int64
+  failed : Int64
+  cancelled_waiters : Int64
+  cancelled_flights : Int64
+  active_flights : Int
+  active_waiters : Int
+  peak_active_flights : Int
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

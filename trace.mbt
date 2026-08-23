@@ -49,6 +49,22 @@ pub fn CacheTrace::new(action : CacheActionKind) -> CacheTrace {
 }
 
 ///|
+/// Deep-copy mutable trace collections for independently returned responses.
+pub fn CacheTrace::copy(self : CacheTrace) -> CacheTrace {
+  CacheTrace::{
+    action: self.action,
+    reasons: self.reasons.copy(),
+    age: self.age,
+    freshness_lifetime: self.freshness_lifetime,
+    stale_by: self.stale_by,
+    primary_key: self.primary_key,
+    selected_variant: self.selected_variant,
+    validator: self.validator,
+    generated_headers: self.generated_headers.copy(),
+  }
+}
+
+///|
 pub fn CacheTrace::add_reason(self : CacheTrace, reason : CacheReason) -> Unit {
   self.reasons.push(reason)
 }

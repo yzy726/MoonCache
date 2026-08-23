@@ -3,6 +3,7 @@ package "Ag108/MoonCache/adapters/async_http"
 
 import {
   "Ag108/MoonCache",
+  "Ag108/MoonCache/concurrency",
   "moonbitlang/core/debug",
 }
 
@@ -46,6 +47,7 @@ pub(all) enum AsyncTransportOutcome {
 pub struct CachedClient[S, T] {
   // private fields
 }
+pub fn[S, T] CachedClient::coalescing_stats(Self[S, T]) -> @concurrency.RequestGroupStats
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::execute(Self[S, T], @MoonCache.RuntimeRequest) -> @MoonCache.RuntimeResponse
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::get(Self[S, T], String, headers? : @MoonCache.HeaderMap) -> @MoonCache.RuntimeResponse
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::head(Self[S, T], String, headers? : @MoonCache.HeaderMap) -> @MoonCache.RuntimeResponse

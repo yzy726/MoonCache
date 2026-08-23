@@ -238,6 +238,7 @@ pub(all) enum CacheReasonCode {
   RuntimeStored
   RuntimeNotStored
   RuntimeOnlyIfCachedMiss
+  RuntimeCoalesced
   StoreReplaced
   StoreEvictedEntries
   StoreEvictedBytes
@@ -272,6 +273,7 @@ pub(all) struct CacheTrace {
   generated_headers : HeaderMap
 } derive(Eq, @debug.Debug)
 pub fn CacheTrace::add_reason(Self, CacheReason) -> Unit
+pub fn CacheTrace::copy(Self) -> Self
 pub fn CacheTrace::has_reason(Self, CacheReasonCode) -> Bool
 pub fn CacheTrace::json_report(Self) -> String
 pub fn CacheTrace::new(CacheActionKind) -> Self
@@ -472,6 +474,7 @@ pub(all) struct RuntimeResponse {
   source : ResponseSource
   trace : CacheTrace
 } derive(Eq, @debug.Debug)
+pub fn RuntimeResponse::copy(Self) -> Self
 pub fn RuntimeResponse::is_cache_reuse(Self) -> Bool
 pub fn RuntimeResponse::json_report(Self) -> String
 pub fn RuntimeResponse::text_report(Self) -> String

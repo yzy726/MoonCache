@@ -49,6 +49,7 @@ pub(all) enum CacheReasonCode {
   RuntimeStored
   RuntimeNotStored
   RuntimeOnlyIfCachedMiss
+  RuntimeCoalesced
   StoreReplaced
   StoreEvictedEntries
   StoreEvictedBytes
@@ -109,6 +110,7 @@ pub fn CacheReasonCode::code(self : CacheReasonCode) -> String {
     RuntimeStored => "MC_RUNTIME_005"
     RuntimeNotStored => "MC_RUNTIME_006"
     RuntimeOnlyIfCachedMiss => "MC_RUNTIME_007"
+    RuntimeCoalesced => "MC_RUNTIME_008"
     StoreReplaced => "MC_MEM_001"
     StoreEvictedEntries => "MC_MEM_002"
     StoreEvictedBytes => "MC_MEM_003"
@@ -171,6 +173,7 @@ pub fn CacheReasonCode::message(self : CacheReasonCode) -> String {
     RuntimeStored => "runtime stored the upstream response"
     RuntimeNotStored => "runtime conservatively skipped storage"
     RuntimeOnlyIfCachedMiss => "only-if-cached request had no reusable response"
+    RuntimeCoalesced => "request joined an in-flight cache operation"
     StoreReplaced => "an equal cache variant was replaced"
     StoreEvictedEntries => "entry-count capacity caused deterministic eviction"
     StoreEvictedBytes => "body-byte capacity caused deterministic eviction"

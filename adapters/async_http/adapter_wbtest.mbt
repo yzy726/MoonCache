@@ -18,6 +18,31 @@ fn async_response(
 }
 
 ///|
+struct DelayedFailureTransport {
+  calls : Array[@mooncache.RuntimeRequest]
+}
+
+///|
+fn DelayedFailureTransport::new() -> DelayedFailureTransport {
+  DelayedFailureTransport::{ calls: [] }
+}
+
+///|
+async fn DelayedFailureTransport::send(
+  self : DelayedFailureTransport,
+  request : @mooncache.RuntimeRequest,
+) -> @mooncache.TransportResponse {
+  self.calls.push(request.copy())
+  @async.sleep(20)
+  raise AsyncScriptedFailure("shared origin failure")
+}
+
+///|
+impl AsyncTransport for DelayedFailureTransport with fn execute(self, request) {
+  self.send(request)
+}
+
+///|
 async test "async cached runtime misses once then serves a hit" {
   let store = @mooncache.MemoryStore::default()
   let origin = ScriptedAsyncTransport::new([
@@ -329,6 +354,196 @@ async test "same-origin redirect policy rejects a cross-origin target" {
   }
   assert_true(rejected)
   assert_eq(origin.call_count(), 1)
+}
+
+///|
+test "coalescing keys hash all request headers and skip unsafe reuse" {
+  let english = @mooncache.RuntimeRequest::get("HTTPS://EXAMPLE.TEST:443/data").with_headers(
+    @mooncache.HeaderMap::from_pairs([
+      ("Accept-Language", "en"),
+      ("Authorization", "Bearer secret"),
+    ]),
+  )
+  let chinese = @mooncache.RuntimeRequest::get("https://example.test/data").with_headers(
+    @mooncache.HeaderMap::from_pairs([
+      ("Accept-Language", "zh"),
+      ("Authorization", "Bearer secret"),
+    ]),
+  )
+  let english_key = request_coalescing_key(english).unwrap()
+  let chinese_key = request_coalescing_key(chinese).unwrap()
+  assert_false(english_key == chinese_key)
+  assert_eq(english_key.length(), 64)
+  assert_false(english_key.contains("secret"))
+  assert_true(
+    request_coalescing_key(
+      english.with_headers(
+        @mooncache.HeaderMap::from_pairs([("Cache-Control", "no-store")]),
+      ),
+    )
+    is None,
+  )
+  assert_true(
+    request_coalescing_key(
+      english.with_headers(
+        @mooncache.HeaderMap::from_pairs([("Range", "bytes=0-9")]),
+      ),
+    )
+    is None,
+  )
+}
+
+///|
+async test "twenty concurrent cached GETs use one upstream request" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = ScriptedAsyncTransport::with_outcomes([
+    AsyncTransportDelayed(
+      30,
+      async_response(200, [("Cache-Control", "max-age=60")], b"shared", 0L, 0L),
+    ),
+  ])
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+  )
+  let responses : Array[@mooncache.RuntimeResponse] = []
+  @async.with_task_group() <| tasks => {
+    for _ in 0..<20 {
+      tasks.spawn_bg() <| () => {
+        responses.push(client.get("https://example.test/coalesced"))
+      }
+    }
+  }
+  assert_eq(origin.call_count(), 1)
+  assert_eq(responses.length(), 20)
+  assert_true(responses.all(fn(response) { response.body == b"shared" }))
+  let mut joined = 0
+  for response in responses {
+    if response.trace.has_reason(RuntimeCoalesced) {
+      joined = joined + 1
+    }
+  }
+  assert_eq(joined, 19)
+  let stats = client.coalescing_stats()
+  assert_eq(stats.started, 1)
+  assert_eq(stats.coalesced, 19)
+  assert_eq(stats.active_flights, 0)
+  assert_eq(store.stats().entries, 1)
+}
+
+///|
+async test "different Vary candidates never share an upstream flight" {
+  let store = @mooncache.MemoryStore::default()
+  let vary_headers = [
+    ("Cache-Control", "max-age=60"),
+    ("Vary", "Accept-Language"),
+  ]
+  let origin = ScriptedAsyncTransport::with_outcomes([
+    AsyncTransportDelayed(
+      20,
+      async_response(200, vary_headers, b"first", 0L, 0L),
+    ),
+    AsyncTransportDelayed(
+      20,
+      async_response(200, vary_headers, b"second", 0L, 0L),
+    ),
+  ])
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+  )
+  @async.with_task_group() <| tasks => {
+    for language in ["en", "zh"] {
+      tasks.spawn_bg() <| () => {
+        ignore(
+          client.get(
+            "https://example.test/language",
+            headers=@mooncache.HeaderMap::from_pairs([
+              ("Accept-Language", language),
+            ]),
+          ),
+        )
+      }
+    }
+  }
+  assert_eq(origin.call_count(), 2)
+  assert_eq(store.variant_count("https://example.test/language"), 2)
+  assert_eq(client.coalescing_stats().coalesced, 0)
+}
+
+///|
+async test "all coalesced waiters receive the same upstream failure" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = DelayedFailureTransport::new()
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+  )
+  let failures = [0]
+  @async.with_task_group() <| tasks => {
+    for _ in 0..<8 {
+      tasks.spawn_bg(allow_failure=true) <| () => {
+        try client.get("https://example.test/failure") |> ignore catch {
+          AsyncScriptedFailure("shared origin failure") =>
+            failures[0] = failures[0] + 1
+          error => raise error
+        }
+      }
+    }
+  }
+  assert_eq(origin.calls.length(), 1)
+  assert_eq(failures[0], 8)
+  assert_eq(store.stats().entries, 0)
+  assert_eq(client.coalescing_stats().failed, 1)
+  assert_eq(client.coalescing_stats().active_flights, 0)
+}
+
+///|
+async test "cancelling a flight leader still delivers to its follower" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = ScriptedAsyncTransport::with_outcomes([
+    AsyncTransportDelayed(
+      30,
+      async_response(
+        200,
+        [("Cache-Control", "max-age=60")],
+        b"completed",
+        0L,
+        0L,
+      ),
+    ),
+  ])
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+  )
+  let leader_cancelled = [false]
+  let follower_body = [b""]
+  @async.with_task_group() <| tasks => {
+    let leader = tasks.spawn(allow_failure=true) <| () => {
+      try client.get("https://example.test/cancel") |> ignore catch {
+        error if @async.is_cancellation_error(error) => {
+          leader_cancelled[0] = true
+          raise error
+        }
+        error => raise error
+      }
+    }
+    @async.sleep(2)
+    tasks.spawn_bg() <| () => {
+      follower_body[0] = client.get("https://example.test/cancel").body
+    }
+    @async.sleep(2)
+    leader.cancel()
+  }
+  assert_true(leader_cancelled[0])
+  assert_eq(follower_body[0], b"completed")
+  assert_eq(origin.call_count(), 1)
+  assert_eq(client.coalescing_stats().active_flights, 0)
 }
 
 ///|

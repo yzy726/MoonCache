@@ -1,8 +1,11 @@
 import {
   "Ag108/MoonCache" @mooncache,
+  "Ag108/MoonCache/concurrency" @request_group,
   "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/async/io",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
 }
 
 import {
