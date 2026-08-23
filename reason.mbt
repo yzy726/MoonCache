@@ -50,6 +50,13 @@ pub(all) enum CacheReasonCode {
   RuntimeNotStored
   RuntimeOnlyIfCachedMiss
   RuntimeCoalesced
+  StaleIfError
+  StaleWhileRevalidate
+  StaleWindowExceeded
+  StaleForbidden
+  StaleUpstreamError
+  StaleBackgroundRevalidation
+  StaleBackgroundFailure
   StoreReplaced
   StoreEvictedEntries
   StoreEvictedBytes
@@ -111,6 +118,13 @@ pub fn CacheReasonCode::code(self : CacheReasonCode) -> String {
     RuntimeNotStored => "MC_RUNTIME_006"
     RuntimeOnlyIfCachedMiss => "MC_RUNTIME_007"
     RuntimeCoalesced => "MC_RUNTIME_008"
+    StaleIfError => "MC_STALE_001"
+    StaleWhileRevalidate => "MC_STALE_002"
+    StaleWindowExceeded => "MC_STALE_003"
+    StaleForbidden => "MC_STALE_004"
+    StaleUpstreamError => "MC_STALE_005"
+    StaleBackgroundRevalidation => "MC_STALE_006"
+    StaleBackgroundFailure => "MC_STALE_007"
     StoreReplaced => "MC_MEM_001"
     StoreEvictedEntries => "MC_MEM_002"
     StoreEvictedBytes => "MC_MEM_003"
@@ -174,6 +188,13 @@ pub fn CacheReasonCode::message(self : CacheReasonCode) -> String {
     RuntimeNotStored => "runtime conservatively skipped storage"
     RuntimeOnlyIfCachedMiss => "only-if-cached request had no reusable response"
     RuntimeCoalesced => "request joined an in-flight cache operation"
+    StaleIfError => "stale-if-error permitted cached fallback"
+    StaleWhileRevalidate => "stale-while-revalidate permitted stale reuse"
+    StaleWindowExceeded => "stale response is outside the permitted window"
+    StaleForbidden => "an explicit directive prohibits stale reuse"
+    StaleUpstreamError => "an upstream error triggered stale fallback"
+    StaleBackgroundRevalidation => "background revalidation was scheduled"
+    StaleBackgroundFailure => "background revalidation failed"
     StoreReplaced => "an equal cache variant was replaced"
     StoreEvictedEntries => "entry-count capacity caused deterministic eviction"
     StoreEvictedBytes => "body-byte capacity caused deterministic eviction"

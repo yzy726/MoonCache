@@ -29,6 +29,8 @@ pub fn evaluate_cached_response(RequestMeta, ResponseMeta, CacheOptions, Timesta
 
 pub fn evaluate_request_policy(RequestMeta) -> RequestPolicy
 
+pub fn evaluate_stale_policy(RequestMeta, ResponseMeta, CacheOptions, Timestamp) -> StalePolicy
+
 pub fn evaluate_storage(RequestMeta, ResponseMeta, CacheOptions) -> StorageDecision
 
 pub fn[S : CacheStore, T : Transport] execute_cached(S, T, CacheOptions, RuntimeRequest, Timestamp) -> RuntimeResponse raise RuntimeError
@@ -42,6 +44,8 @@ pub fn has_usable_validator(ResponseMeta) -> Bool
 pub fn is_default_cacheable_status(Int) -> Bool
 
 pub fn is_safe_http_method(String) -> Bool
+
+pub fn is_stale_if_error_status(Int) -> Bool
 
 pub fn is_valid_etag(String) -> Bool
 
@@ -239,6 +243,13 @@ pub(all) enum CacheReasonCode {
   RuntimeNotStored
   RuntimeOnlyIfCachedMiss
   RuntimeCoalesced
+  StaleIfError
+  StaleWhileRevalidate
+  StaleWindowExceeded
+  StaleForbidden
+  StaleUpstreamError
+  StaleBackgroundRevalidation
+  StaleBackgroundFailure
   StoreReplaced
   StoreEvictedEntries
   StoreEvictedBytes
@@ -510,6 +521,16 @@ pub(all) struct ScenarioResponse {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn ScenarioResponse::body_bytes(Self) -> Bytes
 pub fn ScenarioResponse::to_meta(Self, Timestamp) -> ResponseMeta
+
+pub(all) struct StalePolicy {
+  is_stale : Bool
+  stale_by : DeltaSeconds
+  stale_if_error_window : DeltaSeconds?
+  stale_while_revalidate_window : DeltaSeconds?
+  stale_if_error_allowed : Bool
+  stale_while_revalidate_allowed : Bool
+  prohibited : Bool
+} derive(Eq, @debug.Debug)
 
 pub(all) struct StorageDecision {
   storable : Bool

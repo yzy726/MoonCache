@@ -98,6 +98,39 @@ async test "async cached runtime forwards conditional ETag request" {
 }
 
 ///|
+async test "async stale-if-error probes still attempt the real origin" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = ScriptedAsyncTransport::with_outcomes([
+    AsyncTransportSuccess(
+      async_response(
+        200,
+        [("Cache-Control", "max-age=0, stale-if-error=30"), ("ETag", "\"v1\"")],
+        b"cached",
+        0L,
+        0L,
+      ),
+    ),
+    AsyncTransportFailure("connection reset"),
+  ])
+  let runtime = AsyncCachedRuntime::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+  )
+  let request = @mooncache.RuntimeRequest::get("https://example.test/data")
+  ignore(runtime.execute(request, @mooncache.Timestamp::zero()))
+  let response = runtime.execute(
+    request,
+    @mooncache.Timestamp::from_seconds(10L),
+  )
+  assert_true(response.source is StaleSource)
+  assert_eq(response.body, b"cached")
+  assert_true(response.trace.has_reason(StaleIfError))
+  assert_eq(origin.call_count(), 2)
+  assert_eq(origin.calls()[1].meta.headers.get("if-none-match"), Some("\"v1\""))
+}
+
+///|
 async test "async only-if-cached miss avoids origin" {
   let store = @mooncache.MemoryStore::default()
   let origin = ScriptedAsyncTransport::new([])
@@ -267,6 +300,83 @@ async test "cached client maps its configured deadline to a stable error" {
   }
   assert_true(timed_out)
   assert_eq(store.stats().entries, 0)
+}
+
+///|
+async test "timeout stale fallback is disabled by default" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = ScriptedAsyncTransport::with_outcomes([
+    AsyncTransportSuccess(
+      async_response(
+        200,
+        [("Cache-Control", "max-age=0, stale-if-error=30"), ("ETag", "\"v1\"")],
+        b"cached",
+        0L,
+        0L,
+      ),
+    ),
+    AsyncTransportDelayed(
+      20,
+      async_response(200, [("Cache-Control", "max-age=60")], b"late", 10L, 10L),
+    ),
+  ])
+  let now = [0L]
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+    clock=() => @mooncache.Timestamp::from_seconds(now[0]),
+    client_options=CachedClientOptions::default().with_timeout(1),
+  )
+  ignore(client.get("https://example.test/timeout-stale"))
+  now[0] = 10L
+  let mut timed_out = false
+  try client.get("https://example.test/timeout-stale") |> ignore catch {
+    AsyncRequestTimedOut(1) => timed_out = true
+    error => raise error
+  }
+  assert_true(timed_out)
+  assert_eq(origin.call_count(), 2)
+  assert_eq(store.variant_count("https://example.test/timeout-stale"), 1)
+}
+
+///|
+async test "configured timeout can use stale-if-error" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = ScriptedAsyncTransport::with_outcomes([
+    AsyncTransportSuccess(
+      async_response(
+        200,
+        [("Cache-Control", "max-age=0, stale-if-error=30"), ("ETag", "\"v1\"")],
+        b"cached",
+        0L,
+        0L,
+      ),
+    ),
+    AsyncTransportDelayed(
+      20,
+      async_response(200, [("Cache-Control", "max-age=60")], b"late", 10L, 10L),
+    ),
+  ])
+  let now = [0L]
+  let options = CachedClientOptions::default()
+    .with_timeout(1)
+    .with_stale_timeout_fallback(true)
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+    clock=() => @mooncache.Timestamp::from_seconds(now[0]),
+    client_options=options,
+  )
+  ignore(client.get("https://example.test/timeout-stale"))
+  now[0] = 10L
+  let response = client.get("https://example.test/timeout-stale")
+  assert_true(response.source is StaleSource)
+  assert_eq(response.body, b"cached")
+  assert_eq(response.meta.headers.get("age"), Some("10"))
+  assert_true(response.trace.has_reason(StaleIfError))
+  assert_eq(origin.call_count(), 2)
 }
 
 ///|
@@ -544,6 +654,222 @@ async test "cancelling a flight leader still delivers to its follower" {
   assert_eq(follower_body[0], b"completed")
   assert_eq(origin.call_count(), 1)
   assert_eq(client.coalescing_stats().active_flights, 0)
+}
+
+///|
+async test "stale-while-revalidate returns immediately and a 304 refreshes it" {
+  @async.with_task_group() <| background => {
+    let store = @mooncache.MemoryStore::default()
+    let origin = ScriptedAsyncTransport::new([
+      async_response(
+        200,
+        [
+          ("Cache-Control", "max-age=0, stale-while-revalidate=30"),
+          ("ETag", "\"v1\""),
+        ],
+        b"cached",
+        0L,
+        0L,
+      ),
+      async_response(
+        304,
+        [("Cache-Control", "max-age=60"), ("ETag", "\"v1\"")],
+        b"",
+        10L,
+        10L,
+      ),
+    ])
+    let now = [0L]
+    let client = CachedClient::new(
+      store,
+      origin,
+      @mooncache.CacheOptions::private_cache(),
+      clock=() => @mooncache.Timestamp::from_seconds(now[0]),
+    ).with_background_group(background)
+    ignore(client.get("https://example.test/swr"))
+    now[0] = 10L
+    let stale = client.get("https://example.test/swr")
+    assert_true(stale.source is StaleSource)
+    assert_eq(stale.body, b"cached")
+    assert_true(stale.trace.has_reason(StaleWhileRevalidate))
+    assert_true(stale.trace.has_reason(StaleBackgroundRevalidation))
+    @async.sleep(5)
+    let refreshed = client.get("https://example.test/swr")
+    assert_true(refreshed.source is CacheSource)
+    assert_eq(refreshed.body, b"cached")
+    assert_eq(origin.call_count(), 2)
+  }
+}
+
+///|
+async test "concurrent stale-while-revalidate requests share one refresh" {
+  @async.with_task_group() <| background => {
+    let store = @mooncache.MemoryStore::default()
+    let origin = ScriptedAsyncTransport::with_outcomes([
+      AsyncTransportSuccess(
+        async_response(
+          200,
+          [
+            ("Cache-Control", "max-age=0, stale-while-revalidate=30"),
+            ("ETag", "\"v1\""),
+          ],
+          b"cached",
+          0L,
+          0L,
+        ),
+      ),
+      AsyncTransportDelayed(
+        20,
+        async_response(
+          304,
+          [("Cache-Control", "max-age=60"), ("ETag", "\"v1\"")],
+          b"",
+          10L,
+          10L,
+        ),
+      ),
+    ])
+    let now = [0L]
+    let client = CachedClient::new(
+      store,
+      origin,
+      @mooncache.CacheOptions::private_cache(),
+      clock=() => @mooncache.Timestamp::from_seconds(now[0]),
+    ).with_background_group(background)
+    ignore(client.get("https://example.test/swr-shared"))
+    now[0] = 10L
+    let responses : Array[@mooncache.RuntimeResponse] = []
+    @async.with_task_group() <| callers => {
+      for _ in 0..<12 {
+        callers.spawn_bg() <| () => {
+          responses.push(client.get("https://example.test/swr-shared"))
+        }
+      }
+    }
+    assert_eq(responses.length(), 12)
+    assert_true(responses.all(fn(response) { response.source is StaleSource }))
+    @async.sleep(25)
+    assert_eq(origin.call_count(), 2)
+    assert_eq(store.variant_count("https://example.test/swr-shared"), 1)
+  }
+}
+
+///|
+async test "stale-while-revalidate without a task group stays foreground" {
+  let store = @mooncache.MemoryStore::default()
+  let origin = ScriptedAsyncTransport::new([
+    async_response(
+      200,
+      [
+        ("Cache-Control", "max-age=0, stale-while-revalidate=30"),
+        ("ETag", "\"v1\""),
+      ],
+      b"cached",
+      0L,
+      0L,
+    ),
+    async_response(
+      304,
+      [("Cache-Control", "max-age=60"), ("ETag", "\"v1\"")],
+      b"",
+      10L,
+      10L,
+    ),
+  ])
+  let now = [0L]
+  let client = CachedClient::new(
+    store,
+    origin,
+    @mooncache.CacheOptions::private_cache(),
+    clock=() => @mooncache.Timestamp::from_seconds(now[0]),
+  )
+  ignore(client.get("https://example.test/swr-foreground"))
+  now[0] = 10L
+  let response = client.get("https://example.test/swr-foreground")
+  assert_true(response.source is RevalidatedSource)
+  assert_false(response.trace.has_reason(StaleWhileRevalidate))
+  assert_eq(origin.call_count(), 2)
+}
+
+///|
+async test "stale-while-revalidate obeys its window and must-revalidate" {
+  for
+    scenario in [
+      ("expired", "max-age=0, stale-while-revalidate=5"),
+      ("forbidden", "max-age=0, stale-while-revalidate=30, must-revalidate"),
+    ] {
+    let (suffix, cache_control) = scenario
+    @async.with_task_group() <| background => {
+      let store = @mooncache.MemoryStore::default()
+      let origin = ScriptedAsyncTransport::new([
+        async_response(
+          200,
+          [("Cache-Control", cache_control), ("ETag", "\"v1\"")],
+          b"cached",
+          0L,
+          0L,
+        ),
+        async_response(
+          304,
+          [("Cache-Control", "max-age=60"), ("ETag", "\"v1\"")],
+          b"",
+          10L,
+          10L,
+        ),
+      ])
+      let now = [0L]
+      let client = CachedClient::new(
+        store,
+        origin,
+        @mooncache.CacheOptions::private_cache(),
+        clock=() => @mooncache.Timestamp::from_seconds(now[0]),
+      ).with_background_group(background)
+      let uri = "https://example.test/swr-\{suffix}"
+      ignore(client.get(uri))
+      now[0] = 10L
+      let response = client.get(uri)
+      assert_true(response.source is RevalidatedSource)
+      assert_false(response.trace.has_reason(StaleWhileRevalidate))
+      assert_eq(origin.call_count(), 2)
+    }
+  }
+}
+
+///|
+async test "failed background revalidation keeps the stale entry" {
+  @async.with_task_group() <| background => {
+    let store = @mooncache.MemoryStore::default()
+    let origin = ScriptedAsyncTransport::with_outcomes([
+      AsyncTransportSuccess(
+        async_response(
+          200,
+          [
+            ("Cache-Control", "max-age=0, stale-while-revalidate=30"),
+            ("ETag", "\"v1\""),
+          ],
+          b"cached",
+          0L,
+          0L,
+        ),
+      ),
+      AsyncTransportFailure("background reset"),
+    ])
+    let now = [0L]
+    let client = CachedClient::new(
+      store,
+      origin,
+      @mooncache.CacheOptions::private_cache(),
+      clock=() => @mooncache.Timestamp::from_seconds(now[0]),
+    ).with_background_group(background)
+    let uri = "https://example.test/swr-failure"
+    ignore(client.get(uri))
+    now[0] = 10L
+    let response = client.get(uri)
+    assert_true(response.source is StaleSource)
+    @async.sleep(5)
+    assert_eq(origin.call_count(), 2)
+    assert_eq(store.variant_count(uri), 1)
+  }
 }
 
 ///|

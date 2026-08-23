@@ -64,6 +64,8 @@ fn cached_meta_with_age(entry : StoredEntry, now : Timestamp) -> ResponseMeta {
   let age = calculate_current_age(entry.response, now)
   let headers = entry.response.headers.copy()
   ignore(headers.set("age", age.current_age.seconds().to_string()))
+  // Warning was obsoleted by RFC 9111; never forward a persisted legacy value.
+  ignore(headers.remove("warning"))
   ResponseMeta::{ ..entry.response, headers, }
 }
 
@@ -89,6 +91,31 @@ fn response_from_entry(
     body: response_body_for_method(entry.body, request.meta.http_method),
     source,
     trace,
+  }
+}
+
+///|
+fn stale_if_error_response(
+  entry : StoredEntry,
+  request : RuntimeRequest,
+  trace : CacheTrace,
+  stale_policy : StalePolicy,
+  now : Timestamp,
+  detail : String,
+) -> RuntimeResponse {
+  trace.action = ServeStale
+  trace.stale_by = Some(stale_policy.stale_by)
+  trace.add_reason(CacheReason::with_rfc(StaleIfError, "RFC5861-4"))
+  trace.add_reason(CacheReason::with_detail(StaleUpstreamError, detail))
+  response_from_entry(entry, request, StaleSource, trace, now)
+}
+
+///|
+fn record_stale_denial(trace : CacheTrace, policy : StalePolicy) -> Unit {
+  if policy.prohibited {
+    trace.add_reason(CacheReason::with_rfc(StaleForbidden, "RFC9111-4.2.4"))
+  } else if policy.stale_if_error_window is Some(_) {
+    trace.add_reason(CacheReason::with_rfc(StaleWindowExceeded, "RFC5861-4"))
   }
 }
 
@@ -240,7 +267,53 @@ fn[S : CacheStore, T : Transport] execute_revalidation(
     None => ()
   }
   let conditional = RuntimeRequest::{ ..request, meta: plan.request }
-  let upstream = execute_origin(transport, conditional)
+  let stale_policy = evaluate_stale_policy(
+    request.meta,
+    entry.response,
+    options,
+    now,
+  )
+  let attempt : Result[TransportResponse, RuntimeError] = Ok(
+    execute_origin(transport, conditional),
+  ) catch {
+    error => Err(error)
+  }
+  let upstream = match attempt {
+    Ok(response) => response
+    Err(error) => {
+      if stale_policy.stale_if_error_allowed {
+        return stale_if_error_response(
+          entry,
+          request,
+          trace,
+          stale_policy,
+          now,
+          error.message(),
+        )
+      }
+      record_stale_denial(trace, stale_policy)
+      raise error
+    }
+  }
+  if is_stale_if_error_status(upstream.meta.status) {
+    if stale_policy.stale_if_error_allowed {
+      return stale_if_error_response(
+        entry,
+        request,
+        trace,
+        stale_policy,
+        now,
+        "upstream returned HTTP \{upstream.meta.status}",
+      )
+    }
+    record_stale_denial(trace, stale_policy)
+    return RuntimeResponse::{
+      meta: upstream.meta,
+      body: response_body_for_method(upstream.body, request.meta.http_method),
+      source: RevalidatedSource,
+      trace,
+    }
+  }
   if upstream.meta.status == 304 {
     let merged = merge_not_modified(entry, upstream.meta, options, now) catch {
       error => raise RuntimeTransportFailure(error.message())
@@ -341,8 +414,57 @@ pub fn[S : CacheStore, T : Transport] execute_cached(
         store, transport, request, entry, options, now, trace,
       )
     Fetch => {
-      let upstream = execute_origin(transport, request)
       trace.add_reason(CacheReason::new(RuntimeFetch))
+      let stale_policy = evaluate_stale_policy(
+        request.meta,
+        entry.response,
+        options,
+        now,
+      )
+      let attempt : Result[TransportResponse, RuntimeError] = Ok(
+        execute_origin(transport, request),
+      ) catch {
+        error => Err(error)
+      }
+      let upstream = match attempt {
+        Ok(response) => response
+        Err(error) => {
+          if stale_policy.stale_if_error_allowed {
+            return stale_if_error_response(
+              entry,
+              request,
+              trace,
+              stale_policy,
+              now,
+              error.message(),
+            )
+          }
+          record_stale_denial(trace, stale_policy)
+          raise error
+        }
+      }
+      if is_stale_if_error_status(upstream.meta.status) {
+        if stale_policy.stale_if_error_allowed {
+          return stale_if_error_response(
+            entry,
+            request,
+            trace,
+            stale_policy,
+            now,
+            "upstream returned HTTP \{upstream.meta.status}",
+          )
+        }
+        record_stale_denial(trace, stale_policy)
+        return RuntimeResponse::{
+          meta: upstream.meta,
+          body: response_body_for_method(
+            upstream.body,
+            request.meta.http_method,
+          ),
+          source: UpstreamSource,
+          trace,
+        }
+      }
       ignore(
         CacheStore::remove_variant(store, entry.primary_key, entry.variant_key),
       )

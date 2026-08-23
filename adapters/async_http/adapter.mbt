@@ -55,6 +55,8 @@ pub(all) struct CachedClientOptions {
   max_response_body_bytes : Int
   redirect_policy : RedirectPolicy
   max_redirects : Int
+  serve_stale_on_timeout : Bool
+  enable_stale_while_revalidate : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -64,6 +66,8 @@ pub fn CachedClientOptions::default() -> CachedClientOptions {
     max_response_body_bytes: 8 * 1024 * 1024,
     redirect_policy: ReturnRedirect,
     max_redirects: 5,
+    serve_stale_on_timeout: false,
+    enable_stale_while_revalidate: true,
   }
 }
 
@@ -112,6 +116,23 @@ pub fn CachedClientOptions::with_redirects(
       maximum
     },
   }
+}
+
+///|
+/// Configure whether a client deadline is eligible for stale-if-error.
+pub fn CachedClientOptions::with_stale_timeout_fallback(
+  self : CachedClientOptions,
+  enabled : Bool,
+) -> CachedClientOptions {
+  CachedClientOptions::{ ..self, serve_stale_on_timeout: enabled }
+}
+
+///|
+pub fn CachedClientOptions::with_stale_while_revalidate(
+  self : CachedClientOptions,
+  enabled : Bool,
+) -> CachedClientOptions {
+  CachedClientOptions::{ ..self, enable_stale_while_revalidate: enabled }
 }
 
 ///|
@@ -385,31 +406,162 @@ pub fn[S, T] AsyncCachedRuntime::with_body_limit(
 }
 
 ///|
+fn replace_stale_error_detail(
+  response : @mooncache.RuntimeResponse,
+  detail : String,
+) -> @mooncache.RuntimeResponse {
+  for index = 0; index < response.trace.reasons.length(); index = index + 1 {
+    if response.trace.reasons[index].code is StaleUpstreamError {
+      response.trace.reasons[index] = @mooncache.CacheReason::with_detail(
+        StaleUpstreamError,
+        detail,
+      )
+    }
+  }
+  response
+}
+
+///|
+priv enum AsyncStaleUse {
+  AsyncStaleIfErrorUse(String)
+  AsyncStaleWhileRevalidateUse
+}
+
+///|
+fn[S : @mooncache.CacheStore, T] AsyncCachedRuntime::stale_candidate(
+  self : AsyncCachedRuntime[S, T],
+  request : @mooncache.RuntimeRequest,
+  now : @mooncache.Timestamp,
+  stale_use : AsyncStaleUse,
+) -> @mooncache.RuntimeResponse? {
+  if (request.meta.http_method != "GET" && request.meta.http_method != "HEAD") ||
+    request.body.length() > 0 ||
+    request.meta.headers.contains("range") {
+    return None
+  }
+  guard @mooncache.primary_cache_key(request.meta) is Some(key) else {
+    return None
+  }
+  let candidates = @mooncache.CacheStore::find_variants(self.store, key)
+  let selection = @mooncache.select_variant(candidates, request.meta)
+  guard selection.entry is Some(entry) else { return None }
+  let policy = @mooncache.evaluate_stale_policy(
+    request.meta,
+    entry.response,
+    self.options,
+    now,
+  )
+  let allowed = match stale_use {
+    AsyncStaleIfErrorUse(_) => policy.stale_if_error_allowed
+    AsyncStaleWhileRevalidateUse => policy.stale_while_revalidate_allowed
+  }
+  guard allowed else { return None }
+  let decision = @mooncache.evaluate_cached_response(
+    request.meta,
+    entry.response,
+    self.options,
+    now,
+  )
+  let trace = decision.trace
+  trace.action = ServeStale
+  trace.stale_by = Some(policy.stale_by)
+  trace.primary_key = Some(key.label())
+  trace.selected_variant = Some(entry.variant_key.label)
+  for reason in selection.reasons {
+    trace.add_reason(reason)
+  }
+  match stale_use {
+    AsyncStaleIfErrorUse(detail) => {
+      trace.add_reason(
+        @mooncache.CacheReason::with_rfc(StaleIfError, "RFC5861-4"),
+      )
+      trace.add_reason(
+        @mooncache.CacheReason::with_detail(StaleUpstreamError, detail),
+      )
+    }
+    AsyncStaleWhileRevalidateUse => {
+      trace.add_reason(
+        @mooncache.CacheReason::with_rfc(StaleWhileRevalidate, "RFC5861-3"),
+      )
+      trace.add_reason(@mooncache.CacheReason::new(StaleBackgroundRevalidation))
+    }
+  }
+  let age = @mooncache.calculate_current_age(entry.response, now)
+  let headers = entry.response.headers.copy()
+  ignore(headers.set("age", age.current_age.seconds().to_string()))
+  ignore(headers.remove("warning"))
+  Some(@mooncache.RuntimeResponse::{
+    meta: @mooncache.ResponseMeta::{ ..entry.response, headers, },
+    body: if request.meta.http_method == "HEAD" {
+      b""
+    } else {
+      entry.body
+    },
+    source: StaleSource,
+    trace,
+  })
+}
+
+///|
 pub async fn[S : @mooncache.CacheStore, T : AsyncTransport] AsyncCachedRuntime::execute(
   self : AsyncCachedRuntime[S, T],
   request : @mooncache.RuntimeRequest,
   now : @mooncache.Timestamp,
 ) -> @mooncache.RuntimeResponse {
   let probe = @mooncache.RecordingTransport::with_outcomes([
-    TransportFailure("async origin required"),
+    TransportFailure("async origin attempt pending"),
   ])
-  @mooncache.execute_cached(self.store, probe, self.options, request, now) catch {
-    _core_error => {
-      guard probe.call_count() == 1 else { raise AsyncProbeDidNotRecordRequest }
-      let calls = probe.calls()
-      guard calls.length() == 1 else { raise AsyncProbeDidNotRecordRequest }
-      let upstream = AsyncTransport::execute(self.origin, calls[0])
-      guard upstream.body.length() <= self.max_response_body_bytes else {
-        raise AsyncBodyTooLarge(
-          actual=upstream.body.length(),
-          maximum=self.max_response_body_bytes,
-        )
+  let probe_result : Result[@mooncache.RuntimeResponse, Error] = Ok(
+    @mooncache.execute_cached(self.store, probe, self.options, request, now),
+  ) catch {
+    error => Err(error)
+  }
+  let planned_fallback = match probe_result {
+    Ok(response) => {
+      if probe.call_count() == 0 {
+        return response
       }
-      let replay = @mooncache.FakeTransport::new([upstream])
-      @mooncache.execute_cached(self.store, replay, self.options, request, now) catch {
-        error => raise AsyncCoreFailure(error.message())
+      guard probe.call_count() == 1 &&
+        response.source is StaleSource &&
+        response.trace.has_reason(StaleIfError) else {
+        raise AsyncProbeDidNotRecordRequest
       }
+      Some(response)
     }
+    Err(core_error) => {
+      if probe.call_count() == 0 {
+        raise AsyncCoreFailure(core_error.to_string())
+      }
+      guard probe.call_count() == 1 else { raise AsyncProbeDidNotRecordRequest }
+      None
+    }
+  }
+  let calls = probe.calls()
+  guard calls.length() == 1 else { raise AsyncProbeDidNotRecordRequest }
+  let upstream_result : Result[@mooncache.TransportResponse, Error] = Ok(
+    AsyncTransport::execute(self.origin, calls[0]),
+  ) catch {
+    error if @async.is_being_cancelled() => raise error
+    error => Err(error)
+  }
+  let upstream = match upstream_result {
+    Ok(response) => response
+    Err(error) =>
+      match planned_fallback {
+        Some(response) =>
+          return replace_stale_error_detail(response, error.to_string())
+        None => raise error
+      }
+  }
+  guard upstream.body.length() <= self.max_response_body_bytes else {
+    raise AsyncBodyTooLarge(
+      actual=upstream.body.length(),
+      maximum=self.max_response_body_bytes,
+    )
+  }
+  let replay = @mooncache.FakeTransport::new([upstream])
+  @mooncache.execute_cached(self.store, replay, self.options, request, now) catch {
+    error => raise AsyncCoreFailure(error.message())
   }
 }
 
@@ -505,6 +657,8 @@ pub struct CachedClient[S, T] {
   priv clock : () -> @mooncache.Timestamp
   priv client_options : CachedClientOptions
   priv request_group : @request_group.RequestGroup[@mooncache.RuntimeResponse]
+  priv revalidation_group : @request_group.RequestGroup[Unit]
+  priv background_spawn : ((async () -> Unit) -> Unit)?
 }
 
 ///|
@@ -527,6 +681,21 @@ pub fn[S, T] CachedClient::new(
     ) {
       response.copy()
     }),
+    revalidation_group: @request_group.RequestGroup::new(fn(_unit : Unit) { () }),
+    background_spawn: None,
+  }
+}
+
+///|
+/// Attach background revalidation to a caller-owned structured task group.
+/// The returned client must not outlive the `with_task_group` scope.
+pub fn[S, T, X] CachedClient::with_background_group(
+  self : CachedClient[S, T],
+  group : @async.TaskGroup[X],
+) -> CachedClient[S, T] {
+  CachedClient::{
+    ..self,
+    background_spawn: Some(fn(job) { group.spawn_bg(allow_failure=true, job) }),
   }
 }
 
@@ -576,15 +745,70 @@ async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_on
   request : @mooncache.RuntimeRequest,
   now : @mooncache.Timestamp,
 ) -> @mooncache.RuntimeResponse {
-  match self.client_options.timeout_milliseconds {
-    Some(milliseconds) =>
-      @async.with_timeout(
-        milliseconds,
-        () => self.runtime.execute(request, now),
-        error=AsyncRequestTimedOut(milliseconds),
-      )
-    None => self.runtime.execute(request, now)
+  try {
+    match self.client_options.timeout_milliseconds {
+      Some(milliseconds) =>
+        @async.with_timeout(
+          milliseconds,
+          () => self.runtime.execute(request, now),
+          error=AsyncRequestTimedOut(milliseconds),
+        )
+      None => self.runtime.execute(request, now)
+    }
+  } catch {
+    AsyncRequestTimedOut(milliseconds) as error => {
+      if self.client_options.serve_stale_on_timeout {
+        guard self.runtime.stale_candidate(
+            request,
+            now,
+            AsyncStaleIfErrorUse("client deadline exceeded \{milliseconds}ms"),
+          )
+          is Some(response) else {
+          raise error
+        }
+        return response
+      }
+      raise error
+    }
+    other => raise other
   }
+}
+
+///|
+fn force_background_revalidation(
+  request : @mooncache.RuntimeRequest,
+) -> @mooncache.RuntimeRequest {
+  let headers = request.meta.headers.copy()
+  ignore(headers.set("cache-control", "no-cache"))
+  request.copy().with_headers(headers)
+}
+
+///|
+fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::maybe_serve_stale_while_revalidate(
+  self : CachedClient[S, T],
+  request : @mooncache.RuntimeRequest,
+  now : @mooncache.Timestamp,
+) -> @mooncache.RuntimeResponse? {
+  guard self.client_options.enable_stale_while_revalidate else { return None }
+  guard self.background_spawn is Some(spawn) else { return None }
+  guard request_coalescing_key(request) is Some(key) else { return None }
+  guard self.runtime.stale_candidate(request, now, AsyncStaleWhileRevalidateUse)
+    is Some(response) else {
+    return None
+  }
+  let forced = force_background_revalidation(request)
+  spawn(async fn() {
+    let background_now = (self.clock)()
+    let background_request = forced.with_request_time(background_now)
+    ignore(
+      self.revalidation_group.run("swr:\{key}", async fn() {
+        ignore(self.execute_once_direct(background_request, background_now))
+      }),
+    ) catch {
+      _ => ()
+    }
+  })
+  Some(response)
 }
 
 ///|
@@ -593,6 +817,10 @@ async fn[S : @mooncache.CacheStore, T : AsyncTransport] CachedClient::execute_on
   request : @mooncache.RuntimeRequest,
   now : @mooncache.Timestamp,
 ) -> @mooncache.RuntimeResponse {
+  match self.maybe_serve_stale_while_revalidate(request, now) {
+    Some(response) => return response
+    None => ()
+  }
   match request_coalescing_key(request) {
     None => self.execute_once_direct(request, now)
     Some(key) => {

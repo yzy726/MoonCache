@@ -4,6 +4,7 @@ package "Ag108/MoonCache/adapters/async_http"
 import {
   "Ag108/MoonCache",
   "Ag108/MoonCache/concurrency",
+  "moonbitlang/async",
   "moonbitlang/core/debug",
 }
 
@@ -53,16 +54,21 @@ pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::get(Se
 pub async fn[S : @MoonCache.CacheStore, T : AsyncTransport] CachedClient::head(Self[S, T], String, headers? : @MoonCache.HeaderMap) -> @MoonCache.RuntimeResponse
 pub fn[S, T] CachedClient::new(S, T, @MoonCache.CacheOptions, clock? : () -> @MoonCache.Timestamp, client_options? : CachedClientOptions) -> Self[S, T]
 pub fn[S : @MoonCache.CacheStore, T] CachedClient::store_stats(Self[S, T]) -> @MoonCache.StoreStats
+pub fn[S, T, X] CachedClient::with_background_group(Self[S, T], @async.TaskGroup[X]) -> Self[S, T]
 
 pub(all) struct CachedClientOptions {
   timeout_milliseconds : Int?
   max_response_body_bytes : Int
   redirect_policy : RedirectPolicy
   max_redirects : Int
+  serve_stale_on_timeout : Bool
+  enable_stale_while_revalidate : Bool
 } derive(Eq, @debug.Debug)
 pub fn CachedClientOptions::default() -> Self
 pub fn CachedClientOptions::with_body_limit(Self, Int) -> Self
 pub fn CachedClientOptions::with_redirects(Self, RedirectPolicy, Int) -> Self
+pub fn CachedClientOptions::with_stale_timeout_fallback(Self, Bool) -> Self
+pub fn CachedClientOptions::with_stale_while_revalidate(Self, Bool) -> Self
 pub fn CachedClientOptions::with_timeout(Self, Int) -> Self
 
 pub struct MoonbitAsyncHttpTransport {

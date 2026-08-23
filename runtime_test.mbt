@@ -370,6 +370,225 @@ test "runtime max-stale serves cache without origin call" {
 }
 
 ///|
+test "runtime stale-if-error falls back after a transport failure" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [],
+    [
+      ("Cache-Control", "max-age=10, stale-if-error=30"),
+      ("ETag", "\"v1\""),
+      ("Warning", "110 example.test stale"),
+    ],
+    b"cached",
+    0,
+  )
+  ignore(store.put(entry))
+  let transport = @MoonCache.FakeTransport::with_outcomes([
+    TransportFailure("connection refused"),
+  ])
+  let runtime = @MoonCache.CachedRuntime::new(
+    store,
+    transport,
+    private_options(),
+  )
+  let response = try! runtime.execute(
+    @MoonCache.RuntimeRequest::get("https://example.test/data"),
+    @MoonCache.Timestamp::from_seconds(20),
+  )
+  assert_true(response.source is StaleSource)
+  assert_eq(response.body, b"cached")
+  assert_eq(response.meta.headers.get("age"), Some("20"))
+  assert_false(response.meta.headers.contains("warning"))
+  assert_true(response.trace.has_reason(StaleIfError))
+  assert_true(response.trace.has_reason(StaleUpstreamError))
+  assert_eq(store.variant_count(entry.request.uri), 1)
+}
+
+///|
+test "runtime stale-if-error recognizes RFC 5861 error statuses" {
+  for status in [500, 502, 503, 504] {
+    let store = @MoonCache.MemoryStore::default()
+    let entry = policy_entry(
+      [],
+      [("Cache-Control", "max-age=10, stale-if-error=30"), ("ETag", "\"v1\"")],
+      b"cached",
+      0,
+    )
+    ignore(store.put(entry))
+    let transport = @MoonCache.FakeTransport::new([
+      scripted_response(status, [], b"upstream error", 20, 20),
+    ])
+    let runtime = @MoonCache.CachedRuntime::new(
+      store,
+      transport,
+      private_options(),
+    )
+    let response = try! runtime.execute(
+      @MoonCache.RuntimeRequest::get("https://example.test/data"),
+      @MoonCache.Timestamp::from_seconds(20),
+    )
+    assert_true(response.source is StaleSource)
+    assert_eq(response.meta.status, 200)
+    assert_eq(response.body, b"cached")
+    assert_eq(store.variant_count(entry.request.uri), 1)
+  }
+}
+
+///|
+test "runtime stale-if-error also protects stale entries without validators" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [],
+    [("Cache-Control", "max-age=10, stale-if-error=30")],
+    b"cached",
+    0,
+  )
+  ignore(store.put(entry))
+  let transport = @MoonCache.FakeTransport::new([
+    scripted_response(503, [], b"unavailable", 20, 20),
+  ])
+  let response = try! @MoonCache.CachedRuntime::new(
+    store,
+    transport,
+    private_options(),
+  ).execute(
+    @MoonCache.RuntimeRequest::get("https://example.test/data"),
+    @MoonCache.Timestamp::from_seconds(20),
+  )
+  assert_true(response.source is StaleSource)
+  assert_eq(response.body, b"cached")
+}
+
+///|
+test "request stale-if-error permits fallback without a response extension" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [],
+    [("Cache-Control", "max-age=10"), ("ETag", "\"v1\"")],
+    b"cached",
+    0,
+  )
+  ignore(store.put(entry))
+  let transport = @MoonCache.FakeTransport::with_outcomes([
+    TransportFailure("DNS failure"),
+  ])
+  let request = @MoonCache.RuntimeRequest::new(
+    policy_request("GET", [("Cache-Control", "stale-if-error=30")]),
+    b"",
+  )
+  let response = try! @MoonCache.CachedRuntime::new(
+    store,
+    transport,
+    private_options(),
+  ).execute(request, @MoonCache.Timestamp::from_seconds(20))
+  assert_true(response.source is StaleSource)
+}
+
+///|
+test "stale-if-error outside its window propagates transport failure" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [],
+    [("Cache-Control", "max-age=10, stale-if-error=5"), ("ETag", "\"v1\"")],
+    b"cached",
+    0,
+  )
+  ignore(store.put(entry))
+  let transport = @MoonCache.FakeTransport::with_outcomes([
+    TransportFailure("origin unavailable"),
+  ])
+  let result : Result[@MoonCache.RuntimeResponse, @MoonCache.RuntimeError] = Ok(
+    @MoonCache.CachedRuntime::new(store, transport, private_options()).execute(
+      @MoonCache.RuntimeRequest::get("https://example.test/data"),
+      @MoonCache.Timestamp::from_seconds(20),
+    ),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(result is Err(RuntimeTransportFailure("origin unavailable")))
+  assert_eq(store.variant_count(entry.request.uri), 1)
+}
+
+///|
+test "must-revalidate blocks stale-if-error fallback" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [],
+    [
+      ("Cache-Control", "max-age=10, must-revalidate, stale-if-error=30"),
+      ("ETag", "\"v1\""),
+    ],
+    b"cached",
+    0,
+  )
+  ignore(store.put(entry))
+  let transport = @MoonCache.FakeTransport::with_outcomes([
+    TransportFailure("offline"),
+  ])
+  let result : Result[@MoonCache.RuntimeResponse, @MoonCache.RuntimeError] = Ok(
+    @MoonCache.CachedRuntime::new(store, transport, private_options()).execute(
+      @MoonCache.RuntimeRequest::get("https://example.test/data"),
+      @MoonCache.Timestamp::from_seconds(20),
+    ),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(result is Err(RuntimeTransportFailure("offline")))
+}
+
+///|
+test "server error beyond stale-if-error window does not evict old entry" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [],
+    [("Cache-Control", "max-age=10, stale-if-error=5"), ("ETag", "\"v1\"")],
+    b"cached",
+    0,
+  )
+  ignore(store.put(entry))
+  let transport = @MoonCache.FakeTransport::new([
+    scripted_response(503, [], b"unavailable", 20, 20),
+  ])
+  let response = try! @MoonCache.CachedRuntime::new(
+    store,
+    transport,
+    private_options(),
+  ).execute(
+    @MoonCache.RuntimeRequest::get("https://example.test/data"),
+    @MoonCache.Timestamp::from_seconds(20),
+  )
+  assert_eq(response.meta.status, 503)
+  assert_true(response.trace.has_reason(StaleWindowExceeded))
+  assert_eq(store.variant_count(entry.request.uri), 1)
+  assert_eq(store.peek_variants(entry.request.uri)[0].body, b"cached")
+}
+
+///|
+test "HEAD stale-if-error fallback never returns the cached GET body" {
+  let store = @MoonCache.MemoryStore::default()
+  let entry = policy_entry(
+    [],
+    [("Cache-Control", "max-age=10, stale-if-error=30"), ("ETag", "\"v1\"")],
+    b"cached",
+    0,
+  )
+  ignore(store.put(entry))
+  let transport = @MoonCache.FakeTransport::with_outcomes([
+    TransportFailure("offline"),
+  ])
+  let response = try! @MoonCache.CachedRuntime::new(
+    store,
+    transport,
+    private_options(),
+  ).execute(
+    @MoonCache.RuntimeRequest::head("https://example.test/data"),
+    @MoonCache.Timestamp::from_seconds(20),
+  )
+  assert_true(response.source is StaleSource)
+  assert_eq(response.body, b"")
+}
+
+///|
 test "runtime trace contains primary key and selected variant" {
   let store = @MoonCache.MemoryStore::default()
   let entry = policy_entry(
