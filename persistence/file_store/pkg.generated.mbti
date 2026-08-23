@@ -1,0 +1,76 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Ag108/MoonCache/persistence/file_store"
+
+import {
+  "Ag108/MoonCache",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const FILE_STORE_FORMAT_VERSION : Int = 1
+
+pub fn body_file_digest(Bytes) -> String
+
+pub fn entry_file_id(@MoonCache.StoredEntry) -> String
+
+// Errors
+pub suberror FileStoreError {
+  FileStoreIo(String)
+  FileStoreCorrupt(String)
+  FileStoreUnsupportedVersion(Int)
+  FileStoreMetadataTooLarge(actual~ : Int, maximum~ : Int)
+  FileStoreHeadersTooLarge(actual~ : Int, maximum~ : Int)
+} derive(Eq, @debug.Debug)
+pub fn FileStoreError::message(Self) -> String
+
+// Types and methods
+pub struct FileStore {
+  // private fields
+}
+pub fn FileStore::cached_uris(Self) -> Array[String]
+pub fn FileStore::clear(Self) -> Unit
+pub fn FileStore::clear_checked(Self) -> Unit raise FileStoreError
+pub fn FileStore::compact(Self) -> Int raise FileStoreError
+pub fn FileStore::find_variants(Self, @MoonCache.PrimaryCacheKey) -> Array[@MoonCache.StoredEntry]
+pub fn FileStore::invalidate_uri(Self, String) -> Int
+pub fn FileStore::invalidate_uri_checked(Self, String) -> Int raise FileStoreError
+pub fn FileStore::last_error(Self) -> String?
+pub fn FileStore::open(String, options? : FileStoreOptions) -> Self raise FileStoreError
+pub fn FileStore::options(Self) -> FileStoreOptions
+pub fn FileStore::peek_variants(Self, String) -> Array[@MoonCache.StoredEntry]
+pub fn FileStore::purge_quarantine(Self) -> Int raise FileStoreError
+pub fn FileStore::put(Self, @MoonCache.StoredEntry) -> @MoonCache.StorePutResult
+pub fn FileStore::put_checked(Self, @MoonCache.StoredEntry) -> @MoonCache.StorePutResult raise FileStoreError
+pub fn FileStore::recovery_report(Self) -> FileStoreRecoveryReport
+pub fn FileStore::remove_variant(Self, @MoonCache.PrimaryCacheKey, @MoonCache.VariantKey) -> Bool
+pub fn FileStore::remove_variant_checked(Self, @MoonCache.PrimaryCacheKey, @MoonCache.VariantKey) -> Bool raise FileStoreError
+pub fn FileStore::root(Self) -> String
+pub fn FileStore::stats(Self) -> @MoonCache.StoreStats
+pub fn FileStore::variant_count(Self, String) -> Int
+pub impl @MoonCache.CacheStore for FileStore
+
+pub(all) struct FileStoreOptions {
+  memory_options : @MoonCache.MemoryStoreOptions
+  max_metadata_bytes : Int
+  max_header_bytes : Int
+} derive(Eq, @debug.Debug)
+pub fn FileStoreOptions::default() -> Self
+pub fn FileStoreOptions::with_header_limit(Self, Int) -> Self
+pub fn FileStoreOptions::with_limits(Int, Int64, Int64) -> Self
+pub fn FileStoreOptions::with_memory_options(Self, @MoonCache.MemoryStoreOptions) -> Self
+pub fn FileStoreOptions::with_metadata_limit(Self, Int) -> Self
+
+pub(all) struct FileStoreRecoveryReport {
+  loaded_entries : Int
+  quarantined_entries : Int
+  dropped_entries : Int
+  temp_files_removed : Int
+  orphan_files_removed : Int
+  indexes_rebuilt : Int
+  manifest_rebuilt : Bool
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

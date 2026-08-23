@@ -1,0 +1,13 @@
+import {
+  "Ag108/MoonCache" @mooncache,
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+  "moonbitlang/x/fs",
+}
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "file_store_native.c" ],
+)
