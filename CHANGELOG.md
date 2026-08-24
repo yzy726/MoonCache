@@ -2,6 +2,25 @@
 
 All notable changes are documented here.
 
+## 0.2.0 - 2026-08-24
+
+### Added
+
+- Store-backed CLI commands: `inspect`, `stats`, `purge`, `verify`, and
+  `clean` operating on native `FileStore` directories.
+- Local demonstration caching proxy (`mooncache serve`) for development use.
+- Runnable `demo_proxy` example walking through the MISS/HIT/REVALIDATE/304/
+  STALE-IF-ERROR/VARY/COALESCE script.
+- Behavior-compatibility fixtures with documented reference expectations.
+- Deterministic benchmarks for age calculation, variant matching, and store
+  operations.
+- Expanded data-driven rule-scenario fixtures (250+) replayed in tests.
+- Roadmap, migration, and release documentation updates.
+
+### Changed
+
+- Final-acceptance release published as `0.2.0`.
+
 ## 0.1.3 - 2026-08-03
 
 ### Fixed
