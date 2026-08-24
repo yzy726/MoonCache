@@ -12,7 +12,7 @@ application request
   -> store update and trace
 ```
 
-## In scope for 0.1.3
+## In scope for 0.2.0
 
 - `GET` and `HEAD` cache decisions.
 - Private and shared cache modes.
@@ -29,6 +29,14 @@ application request
   wrapper, isolated from the portable core.
 - Stable reason codes and redacted text/JSON decision reports.
 - A CLI for validating, explaining, and replaying deterministic scenarios.
+- A native recoverable file-backed store with atomic writes, content digests,
+  quarantine, compaction, and startup recovery.
+- Deterministic request coalescing for concurrent identical fetches.
+- Stale resilience: `stale-if-error`, `stale-while-revalidate`,
+  `only-if-cached`, background revalidation, observers, and telemetry.
+- Store-backed CLI commands (`stats`, `inspect`, `purge`, `verify`, `clean`)
+  and a local development demo proxy (`serve`).
+- Differential compatibility fixtures and deterministic benchmarks.
 
 ## Deliberately out of scope
 

@@ -1,6 +1,6 @@
 # Current-release limitations
 
-The following are deliberate boundaries of `0.1.3`, not hidden claims of
+The following are deliberate boundaries of `0.2.0`, not hidden claims of
 support.
 
 ## Cache semantics

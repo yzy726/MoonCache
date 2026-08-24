@@ -1,6 +1,6 @@
 # RFC support matrix
 
-This matrix describes the `0.1.3` behavior. “Partial”
+This matrix describes the `0.2.0` behavior. “Partial”
 means the listed subset is implemented and the omitted part is recorded in
 `LIMITATIONS.md`.
 
