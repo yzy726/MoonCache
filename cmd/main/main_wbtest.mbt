@@ -336,6 +336,50 @@ test "CLI verify cleans abandoned temp files during recovery" {
 }
 
 ///|
+test "CLI parses clean with --store option" {
+  assert_true(
+    parse_command(["clean", "--store", "cachedir"])
+    is Clean("cachedir", TextOutput),
+  )
+  assert_true(
+    parse_command(["clean", "--store", "cachedir", "--json"])
+    is Clean("cachedir", JsonOutput),
+  )
+}
+
+///|
+test "CLI rejects clean without --store path" {
+  let result : Result[CliCommand, CliArgumentError] = Ok(
+    parse_command(["clean"]),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(result is Err(CliArgumentError("clean requires --store <path>")))
+}
+
+///|
+test "CLI clean purges quarantine leftovers and compacts" {
+  let root = "target/mooncache_cli_tests/clean"
+  prepare_cli_store(root, [cli_test_entry("https://example.test/data", 100)])
+  @fs.write_string_to_file(
+    "target/mooncache_cli_tests/clean/quarantine/junk.dat", "corrupt",
+  )
+  let text = store_clean_report(root, TextOutput)
+  assert_true(text.contains("Quarantined files purged: 1"))
+  assert_true(text.contains("Compacted entries: "))
+  let json_root = "target/mooncache_cli_tests/clean_json"
+  prepare_cli_store(json_root, [
+    cli_test_entry("https://example.test/data", 100),
+  ])
+  @fs.write_string_to_file(
+    "target/mooncache_cli_tests/clean_json/quarantine/junk.dat", "corrupt",
+  )
+  let json = store_clean_report(json_root, JsonOutput)
+  assert_true(json.contains("\"quarantined_files_purged\": 1"))
+  assert_true(json.contains("\"compacted_entries\":"))
+}
+
+///|
 fn cli_variant_entry(
   uri : String,
   language : String,

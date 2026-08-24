@@ -13,6 +13,7 @@ priv enum CliCommand {
   Inspect(String, OutputFormat)
   Purge(String, String, OutputFormat)
   Verify(String, OutputFormat)
+  Clean(String, OutputFormat)
   Help
   Version
 }
@@ -35,6 +36,7 @@ fn usage() -> String {
     #|  mooncache inspect --store <dir> [--json]
     #|  mooncache purge --store <dir> --uri <url> [--json]
     #|  mooncache verify --store <dir> [--json]
+    #|  mooncache clean --store <dir> [--json]
     #|  mooncache --version
     #|
     #|Exit codes:
@@ -311,6 +313,37 @@ fn store_verify_report(path : String, format : OutputFormat) -> String raise {
 }
 
 ///|
+fn clean_json(quarantined : Int, compacted : Int) -> String {
+  Json::object({
+    "quarantined_files_purged": quarantined,
+    "compacted_entries": compacted,
+  }).stringify(indent=2)
+}
+
+///|
+fn clean_text(quarantined : Int, compacted : Int) -> String {
+  [
+    "Quarantined files purged: \{quarantined}",
+    "Compacted entries: \{compacted}",
+  ].join("\n")
+}
+
+///|
+fn store_clean_report(path : String, format : OutputFormat) -> String raise {
+  let store = open_cli_store(path)
+  let quarantined = store.purge_quarantine() catch {
+    error => raise CliArgumentError(@file_store.FileStoreError::message(error))
+  }
+  let compacted = store.compact() catch {
+    error => raise CliArgumentError(@file_store.FileStoreError::message(error))
+  }
+  match format {
+    JsonOutput => clean_json(quarantined, compacted)
+    TextOutput => clean_text(quarantined, compacted)
+  }
+}
+
+///|
 fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
   guard args.length() > 0 else { return Help }
   match args[0] {
@@ -363,6 +396,10 @@ fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
     "verify" => {
       let options = parse_store_options(args)
       Verify(require_store_path("verify", options), options.format)
+    }
+    "clean" => {
+      let options = parse_store_options(args)
+      Clean(require_store_path("clean", options), options.format)
     }
     command => raise CliArgumentError("unknown command: \{command}")
   }
@@ -586,6 +623,10 @@ fn run(args : Array[String]) -> Int raise {
     }
     Verify(path, format) => {
       println(store_verify_report(path, format))
+      0
+    }
+    Clean(path, format) => {
+      println(store_clean_report(path, format))
       0
     }
   }
