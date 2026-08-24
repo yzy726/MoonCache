@@ -12,6 +12,7 @@ priv enum CliCommand {
   Stats(String, OutputFormat)
   Inspect(String, OutputFormat)
   Purge(String, String, OutputFormat)
+  Verify(String, OutputFormat)
   Help
   Version
 }
@@ -33,6 +34,7 @@ fn usage() -> String {
     #|  mooncache stats --store <dir> [--json]
     #|  mooncache inspect --store <dir> [--json]
     #|  mooncache purge --store <dir> --uri <url> [--json]
+    #|  mooncache verify --store <dir> [--json]
     #|  mooncache --version
     #|
     #|Exit codes:
@@ -243,6 +245,72 @@ fn store_purge_report(
 }
 
 ///|
+fn verify_status(store : @file_store.FileStore) -> String {
+  if store.last_error() is None {
+    "OK"
+  } else {
+    "DEGRADED"
+  }
+}
+
+///|
+fn verify_json(
+  path : String,
+  store : @file_store.FileStore,
+  status : String,
+) -> String {
+  let recovery = store.recovery_report()
+  Json::object({
+    "store": Json::string(path),
+    "status": Json::string(status.to_lower()),
+    "recovery": Json::object({
+      "loaded_entries": recovery.loaded_entries,
+      "quarantined_entries": recovery.quarantined_entries,
+      "dropped_entries": recovery.dropped_entries,
+      "temp_files_removed": recovery.temp_files_removed,
+      "orphan_files_removed": recovery.orphan_files_removed,
+      "indexes_rebuilt": recovery.indexes_rebuilt,
+      "manifest_rebuilt": recovery.manifest_rebuilt,
+    }),
+  }).stringify(indent=2)
+}
+
+///|
+fn verify_text(
+  path : String,
+  store : @file_store.FileStore,
+  status : String,
+) -> String {
+  let recovery = store.recovery_report()
+  let lines = [
+    "Store: \{path}",
+    "Status: \{status}",
+    "Loaded entries: \{recovery.loaded_entries}",
+    "Quarantined entries: \{recovery.quarantined_entries}",
+    "Dropped entries: \{recovery.dropped_entries}",
+    "Temp files removed: \{recovery.temp_files_removed}",
+    "Orphan files removed: \{recovery.orphan_files_removed}",
+    "Indexes rebuilt: \{recovery.indexes_rebuilt}",
+    "Manifest rebuilt: \{recovery.manifest_rebuilt}",
+  ]
+  match store.last_error() {
+    Some(message) => lines.push("Last error: \{message}")
+    None => ()
+  }
+  lines.join("\n")
+}
+
+///|
+fn store_verify_report(path : String, format : OutputFormat) -> String raise {
+  let store = open_cli_store(path)
+  let status = verify_status(store)
+  match format {
+    JsonOutput => verify_json(path, store, status)
+    TextOutput => verify_text(path, store, status)
+  }
+}
+
+///|
 fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
   guard args.length() > 0 else { return Help }
   match args[0] {
@@ -291,6 +359,10 @@ fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
         require_uri_value("purge", options),
         options.format,
       )
+    }
+    "verify" => {
+      let options = parse_store_options(args)
+      Verify(require_store_path("verify", options), options.format)
     }
     command => raise CliArgumentError("unknown command: \{command}")
   }
@@ -510,6 +582,10 @@ fn run(args : Array[String]) -> Int raise {
     }
     Purge(path, uri, format) => {
       println(store_purge_report(path, uri, format))
+      0
+    }
+    Verify(path, format) => {
+      println(store_verify_report(path, format))
       0
     }
   }

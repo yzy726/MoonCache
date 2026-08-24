@@ -290,6 +290,52 @@ test "CLI purge removes every variant of one URI" {
 }
 
 ///|
+test "CLI parses verify with --store option" {
+  assert_true(
+    parse_command(["verify", "--store", "cachedir"])
+    is Verify("cachedir", TextOutput),
+  )
+  assert_true(
+    parse_command(["verify", "--store", "cachedir", "--json"])
+    is Verify("cachedir", JsonOutput),
+  )
+}
+
+///|
+test "CLI rejects verify without --store path" {
+  let result : Result[CliCommand, CliArgumentError] = Ok(
+    parse_command(["verify"]),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(result is Err(CliArgumentError("verify requires --store <path>")))
+}
+
+///|
+test "CLI verify reports healthy recovered store" {
+  let root = "target/mooncache_cli_tests/verify"
+  prepare_cli_store(root, [cli_test_entry("https://example.test/data", 100)])
+  let text = store_verify_report(root, TextOutput)
+  assert_true(text.contains("Status: OK"))
+  assert_true(text.contains("Loaded entries: 1"))
+  let json = store_verify_report(root, JsonOutput)
+  assert_true(json.contains("\"status\": \"ok\""))
+  assert_true(json.contains("\"loaded_entries\": 1"))
+}
+
+///|
+test "CLI verify cleans abandoned temp files during recovery" {
+  let root = "target/mooncache_cli_tests/verify_temp"
+  prepare_cli_store(root, [cli_test_entry("https://example.test/data", 100)])
+  @fs.write_string_to_file(
+    "target/mooncache_cli_tests/verify_temp/temp/leftover.tmp", "partial",
+  )
+  let report = store_verify_report(root, TextOutput)
+  assert_true(report.contains("Status: OK"))
+  assert_true(report.contains("Temp files removed: 1"))
+}
+
+///|
 fn cli_variant_entry(
   uri : String,
   language : String,
