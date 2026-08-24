@@ -10,6 +10,7 @@ priv enum CliCommand {
   Validate(String, OutputFormat)
   Replay(String, OutputFormat)
   Stats(String, OutputFormat)
+  Inspect(String, OutputFormat)
   Help
   Version
 }
@@ -29,6 +30,7 @@ fn usage() -> String {
     #|  mooncache validate <scenario.json> [--json]
     #|  mooncache replay <scenario-directory> [--json]
     #|  mooncache stats --store <dir> [--json]
+    #|  mooncache inspect --store <dir> [--json]
     #|  mooncache --version
     #|
     #|Exit codes:
@@ -123,6 +125,82 @@ fn store_stats_report(path : String, format : OutputFormat) -> String raise {
 }
 
 ///|
+priv struct InspectItem {
+  uri : String
+  variants : Int
+  body_bytes : Int64
+}
+
+///|
+fn json_int64(value : Int64) -> Json {
+  Json::number(value.to_double(), repr=value.to_string())
+}
+
+///|
+fn InspectItem::to_json(self : InspectItem) -> Json {
+  Json::object({
+    "uri": Json::string(self.uri),
+    "variants": self.variants,
+    "body_bytes": json_int64(self.body_bytes),
+  })
+}
+
+///|
+fn collect_inspect_items(store : @file_store.FileStore) -> Array[InspectItem] {
+  let uris = store.cached_uris()
+  uris.sort_by(compare_cli_paths)
+  uris.map(fn(uri) {
+    let variants = store.peek_variants(uri)
+    let mut body_bytes : Int64 = 0L
+    for entry in variants {
+      body_bytes = body_bytes + entry.body_size()
+    }
+    InspectItem::{ uri, variants: variants.length(), body_bytes }
+  })
+}
+
+///|
+fn inspect_json(items : Array[InspectItem]) -> String {
+  let mut entries = 0
+  for item in items {
+    entries = entries + item.variants
+  }
+  Json::object({
+    "cached_uris": items.length(),
+    "entries": entries,
+    "items": Json::array(items.map(fn(item) { item.to_json() })),
+  }).stringify(indent=2)
+}
+
+///|
+fn inspect_text(items : Array[InspectItem]) -> String {
+  let body : Array[String] = []
+  let mut entries = 0
+  for item in items {
+    entries = entries + item.variants
+    body.push(item.uri)
+    body.push("  variants: \{item.variants}")
+    body.push("  body bytes: \{item.body_bytes}")
+  }
+  let header : Array[String] = [
+    "Cached URIs: \{items.length()}",
+    "Entries: \{entries}",
+  ]
+  header.append(body)
+  header.join("\n")
+}
+
+///|
+fn store_inspect_report(path : String, format : OutputFormat) -> String raise {
+  let store = open_cli_store(path)
+  let items = collect_inspect_items(store)
+  match format {
+    JsonOutput => inspect_json(items)
+    TextOutput => inspect_text(items)
+  }
+}
+
+///|
 fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
   guard args.length() > 0 else { return Help }
   match args[0] {
@@ -159,6 +237,10 @@ fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
     "stats" => {
       let options = parse_store_options(args)
       Stats(require_store_path("stats", options), options.format)
+    }
+    "inspect" => {
+      let options = parse_store_options(args)
+      Inspect(require_store_path("inspect", options), options.format)
     }
     command => raise CliArgumentError("unknown command: \{command}")
   }
@@ -370,6 +452,10 @@ fn run(args : Array[String]) -> Int raise {
     Replay(directory, format) => if replay(directory, format) { 0 } else { 1 }
     Stats(path, format) => {
       println(store_stats_report(path, format))
+      0
+    }
+    Inspect(path, format) => {
+      println(store_inspect_report(path, format))
       0
     }
   }

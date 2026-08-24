@@ -194,3 +194,87 @@ test "CLI store stats reports persisted entry counts" {
   assert_true(json.contains("\"entries\": 1"))
   assert_true(json.contains("\"body_bytes\": 7"))
 }
+
+///|
+test "CLI parses inspect with --store option" {
+  assert_true(
+    parse_command(["inspect", "--store", "cachedir"])
+    is Inspect("cachedir", TextOutput),
+  )
+  assert_true(
+    parse_command(["inspect", "--store", "cachedir", "--json"])
+    is Inspect("cachedir", JsonOutput),
+  )
+}
+
+///|
+test "CLI rejects inspect without --store path" {
+  let result : Result[CliCommand, CliArgumentError] = Ok(
+    parse_command(["inspect"]),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(
+    result is Err(CliArgumentError("inspect requires --store <path>")),
+  )
+}
+
+///|
+test "CLI inspect lists cached URIs with variants" {
+  let root = "target/mooncache_cli_tests/inspect"
+  prepare_cli_store(root, [
+    cli_test_entry("https://example.test/a", 100),
+    cli_variant_entry("https://example.test/b", "en", 110),
+    cli_variant_entry("https://example.test/b", "zh", 120),
+  ])
+  let text = store_inspect_report(root, TextOutput)
+  assert_true(text.contains("Cached URIs: 2"))
+  assert_true(text.contains("https://example.test/a"))
+  assert_true(text.contains("variants: 2"))
+  let json = store_inspect_report(root, JsonOutput)
+  assert_true(json.contains("\"cached_uris\": 2"))
+  assert_true(json.contains("\"uri\": \"https://example.test/b\""))
+  assert_true(json.contains("\"variants\": 2"))
+}
+
+///|
+fn cli_variant_entry(
+  uri : String,
+  language : String,
+  tick : Int64,
+) -> @mooncache.StoredEntry {
+  let request_headers = @mooncache.HeaderMap::new()
+  ignore(request_headers.append("Accept-Language", language))
+  let response_headers = @mooncache.HeaderMap::new()
+  ignore(response_headers.append("Cache-Control", "max-age=60"))
+  ignore(response_headers.append("Vary", "Accept-Language"))
+  let request = @mooncache.RequestMeta::new(
+    "GET",
+    uri,
+    request_headers,
+    @mooncache.Timestamp::from_seconds(tick),
+  )
+  let response = @mooncache.ResponseMeta::complete(
+    200,
+    response_headers,
+    @mooncache.Timestamp::from_seconds(tick),
+    @mooncache.Timestamp::from_seconds(tick),
+  )
+  let primary = @mooncache.PrimaryCacheKey::from_request(request).unwrap()
+  let variant = @mooncache.build_variant_key(
+    request.headers,
+    @mooncache.parse_vary(response.headers),
+  ).unwrap()
+  @mooncache.StoredEntry::new(
+    primary,
+    variant,
+    request,
+    response,
+    b"payload",
+    @mooncache.StoredPolicy::cacheable(
+      @mooncache.DeltaSeconds::from_seconds(60),
+      false,
+    ),
+    @mooncache.Timestamp::from_seconds(tick),
+  )
+}
