@@ -1,0 +1,24 @@
+{
+  "name": "status 206 in shared mode without expiration",
+  "mode": "shared",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 206,
+    "headers": {
+      "Cache-Control": "s-maxage=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "miss",
+    "reason": "MC_STORE_006"
+  }
+}

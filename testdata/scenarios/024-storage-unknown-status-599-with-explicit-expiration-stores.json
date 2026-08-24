@@ -1,0 +1,23 @@
+{
+  "name": "unknown status 599 with explicit expiration stores",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 599,
+    "headers": {
+      "Cache-Control": "max-age=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit"
+  }
+}

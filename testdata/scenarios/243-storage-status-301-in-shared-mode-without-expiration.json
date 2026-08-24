@@ -1,0 +1,24 @@
+{
+  "name": "status 301 in shared mode without expiration",
+  "mode": "shared",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 301,
+    "headers": {
+      "Cache-Control": "s-maxage=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit",
+    "reason": "MC_FRESH_002"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "last-modified matrix case 12 at 116",
+  "mode": "private",
+  "now": 116,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "Last-Modified": "Thu, 01 Jan 1970 00:01:00 GMT"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_REVAL_001"
+  }
+}

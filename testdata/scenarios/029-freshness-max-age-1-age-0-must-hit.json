@@ -1,0 +1,24 @@
+{
+  "name": "max-age 1 age 0 must hit",
+  "mode": "private",
+  "now": 0,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=1"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit",
+    "reason": "MC_FRESH_001"
+  }
+}

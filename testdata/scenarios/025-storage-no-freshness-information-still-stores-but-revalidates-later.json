@@ -1,0 +1,25 @@
+{
+  "name": "no freshness information still stores but revalidates later",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "public",
+      "ETag": "\"v1\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_REVAL_001"
+  }
+}

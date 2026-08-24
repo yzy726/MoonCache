@@ -1,0 +1,26 @@
+{
+  "name": "min-fresh margin 25 at age 45",
+  "mode": "private",
+  "now": 45,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Cache-Control": "min-fresh=25"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "fetch",
+    "reason": "MC_REQ_005"
+  }
+}

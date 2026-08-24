@@ -1,0 +1,13 @@
+{
+  "name": "put requests do not consult cached entries",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "PUT",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "expected": {
+    "action": "fetch"
+  }
+}

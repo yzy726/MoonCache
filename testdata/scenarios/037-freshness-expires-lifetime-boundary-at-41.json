@@ -1,0 +1,25 @@
+{
+  "name": "expires lifetime boundary at 41",
+  "mode": "private",
+  "now": 41,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Date": "Thu, 01 Jan 1970 00:00:00 GMT",
+      "Expires": "Thu, 01 Jan 1970 00:00:40 GMT"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "miss",
+    "reason": "MC_FRESH_007"
+  }
+}

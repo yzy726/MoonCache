@@ -1,0 +1,25 @@
+{
+  "name": "clock clamp keeps fresh decision stable",
+  "mode": "private",
+  "now": 59,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "Date": "Thu, 01 Jan 1970 00:05:00 GMT"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit",
+    "reason": "MC_AGE_003"
+  }
+}

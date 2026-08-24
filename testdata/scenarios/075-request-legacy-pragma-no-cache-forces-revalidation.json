@@ -1,0 +1,27 @@
+{
+  "name": "legacy pragma no-cache forces revalidation",
+  "mode": "private",
+  "now": 5,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Pragma": "no-cache"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "ETag": "\"pg\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_REQ_002"
+  }
+}

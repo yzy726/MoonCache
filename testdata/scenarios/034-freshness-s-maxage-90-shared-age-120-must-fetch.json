@@ -1,0 +1,24 @@
+{
+  "name": "s-maxage 90 shared age 120 must fetch",
+  "mode": "shared",
+  "now": 120,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "s-maxage=90"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "miss",
+    "reason": "MC_FRESH_007"
+  }
+}

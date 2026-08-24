@@ -1,0 +1,13 @@
+{
+  "name": "delete requests are unsupported for storage",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "DELETE",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "expected": {
+    "action": "fetch"
+  }
+}

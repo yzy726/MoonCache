@@ -1,0 +1,13 @@
+{
+  "name": "post never reads from cache policy layer",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "POST",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "expected": {
+    "action": "fetch"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "etag matrix case 5 revalidates when stale",
+  "mode": "private",
+  "now": 65,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "ETag": "\"e\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_REVAL_001"
+  }
+}

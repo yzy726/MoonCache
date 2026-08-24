@@ -1,0 +1,24 @@
+{
+  "name": "shared s-maxage 200 at 260",
+  "mode": "shared",
+  "now": 260,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "s-maxage=200"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "fetch",
+    "reason": "MC_FRESH_007"
+  }
+}

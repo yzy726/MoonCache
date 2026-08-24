@@ -1,0 +1,22 @@
+{
+  "name": "found without explicit expiration is not storable",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 302,
+    "headers": {},
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "miss",
+    "reason": "MC_STORE_006"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "unparsable expires degrades to zero lifetime",
+  "mode": "private",
+  "now": 1,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Expires": "not-a-date"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "miss",
+    "reason": "MC_FRESH_003"
+  }
+}

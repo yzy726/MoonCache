@@ -1,0 +1,27 @@
+{
+  "name": "must-revalidate forbids stale serving in shared too",
+  "mode": "shared",
+  "now": 70,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Cache-Control": "max-stale=60"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60, must-revalidate",
+      "ETag": "\"mr\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_REVAL_001"
+  }
+}

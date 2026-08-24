@@ -1,0 +1,25 @@
+{
+  "name": "zero max-age requires validation every time",
+  "mode": "private",
+  "now": 0,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=0",
+      "ETag": "\"z\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_FRESH_001"
+  }
+}

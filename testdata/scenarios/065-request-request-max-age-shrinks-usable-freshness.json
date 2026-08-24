@@ -1,0 +1,26 @@
+{
+  "name": "request max-age shrinks usable freshness",
+  "mode": "private",
+  "now": 30,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Cache-Control": "max-age=20"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "miss",
+    "reason": "MC_REQ_004"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "variant grid case 12",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Multi-C": "3"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "Vary": "Multi-C"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit"
+  }
+}

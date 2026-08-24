@@ -1,0 +1,27 @@
+{
+  "name": "variant grid case 3",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Accept-Language": "en",
+      "User-Agent": "ua/1"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "Vary": "Accept-Language, User-Agent"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "overflow clamp on absurd expires gap",
+  "mode": "private",
+  "now": 1000000,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Expires": "Fri, 01 Jan 9999 00:00:00 GMT"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit",
+    "reason": "MC_FRESH_003"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "only-if-cached misses when nothing stored",
+  "mode": "private",
+  "now": 10,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Cache-Control": "only-if-cached"
+    }
+  },
+  "expected": {
+    "action": "only_if_cached_miss",
+    "reason": "MC_REQ_003"
+  }
+}

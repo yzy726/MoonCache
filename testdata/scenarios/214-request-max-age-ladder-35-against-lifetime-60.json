@@ -1,0 +1,26 @@
+{
+  "name": "max-age ladder 35 against lifetime 60",
+  "mode": "private",
+  "now": 40,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Cache-Control": "max-age=35"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "fetch",
+    "reason": "MC_REQ_004"
+  }
+}

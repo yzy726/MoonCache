@@ -1,0 +1,25 @@
+{
+  "name": "proxy-revalidate blocks shared stale reuse",
+  "mode": "shared",
+  "now": 90,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60, proxy-revalidate",
+      "ETag": "\"p\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_REVAL_001"
+  }
+}

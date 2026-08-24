@@ -1,0 +1,26 @@
+{
+  "name": "only-if-cached refuses stale beyond max-stale window",
+  "mode": "private",
+  "now": 120,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Cache-Control": "only-if-cached"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "only_if_cached_miss",
+    "reason": "MC_RUNTIME_007"
+  }
+}

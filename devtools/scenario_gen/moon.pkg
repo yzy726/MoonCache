@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/x/fs",
+  "Ag108/MoonCache" @mooncache,
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

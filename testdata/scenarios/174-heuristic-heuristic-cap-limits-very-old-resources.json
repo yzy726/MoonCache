@@ -1,0 +1,25 @@
+{
+  "name": "heuristic cap limits very old resources",
+  "mode": "private",
+  "now": 86400,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Date": "Sat, 1158 Jan 1970 09:46:40 GMT",
+      "Last-Modified": "Thu, 01 Jan 1970 00:00:00 GMT"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "revalidate",
+    "reason": "MC_FRESH_004"
+  }
+}

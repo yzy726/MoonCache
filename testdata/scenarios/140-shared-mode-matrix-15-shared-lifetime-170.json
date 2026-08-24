@@ -1,0 +1,24 @@
+{
+  "name": "mode matrix 15 shared lifetime 170",
+  "mode": "shared",
+  "now": 175,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=170"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "fetch",
+    "reason": "MC_FRESH_007"
+  }
+}

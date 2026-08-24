@@ -418,6 +418,47 @@ async test "caching proxy serves repeated requests from cache" {
 }
 
 ///|
+fn sorted_json_files(directory : String) -> Array[String] raise {
+  let names = @fs.read_dir(directory)
+  names.sort_by(compare_cli_paths)
+  let paths : Array[String] = []
+  for name in names {
+    if name.to_lower().has_suffix(".json") {
+      paths.push(join_path(directory, name))
+    }
+  }
+  paths
+}
+
+///|
+test "bundled rule scenarios exceed the final-acceptance floor and all pass" {
+  let paths = sorted_json_files("testdata/scenarios")
+  assert_true(paths.length() >= 250)
+  let mut failures = 0
+  let first_failures : Array[String] = []
+  for path in paths {
+    let text = @fs.read_file_to_string(path)
+    let analysis = @mooncache.analyze_scenario_json(text) catch {
+      error => {
+        failures = failures + 1
+        if first_failures.length() < 5 {
+          first_failures.push("\{path}: parse \{@debug.to_string(error)}")
+        }
+        continue
+      }
+    }
+    if !analysis.valid {
+      failures = failures + 1
+      if first_failures.length() < 5 {
+        first_failures.push("\{path}: \{analysis.errors.join("; ")}")
+      }
+    }
+  }
+  assert_eq(failures, 0)
+  assert_eq(first_failures, [])
+}
+
+///|
 fn cli_variant_entry(
   uri : String,
   language : String,

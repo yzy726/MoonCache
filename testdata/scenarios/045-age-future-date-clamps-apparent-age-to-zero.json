@@ -1,0 +1,25 @@
+{
+  "name": "future date clamps apparent age to zero",
+  "mode": "private",
+  "now": 5,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {}
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "Date": "Thu, 01 Jan 1970 00:10:00 GMT"
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "hit",
+    "reason": "MC_AGE_003"
+  }
+}

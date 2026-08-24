@@ -1,0 +1,27 @@
+{
+  "name": "max-stale window 30 versus staleness 20",
+  "mode": "private",
+  "now": 80,
+  "request": {
+    "method": "GET",
+    "uri": "https://example.test/scenario",
+    "headers": {
+      "Cache-Control": "max-stale=30"
+    }
+  },
+  "stored_response": {
+    "status": 200,
+    "headers": {
+      "Cache-Control": "max-age=60",
+      "ETag": "\"ms\""
+    },
+    "request_time": 0,
+    "response_time": 0,
+    "body": "payload",
+    "complete": true
+  },
+  "expected": {
+    "action": "stale",
+    "reason": "MC_REQ_006"
+  }
+}
