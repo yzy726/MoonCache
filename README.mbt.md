@@ -1,7 +1,7 @@
 # MoonCache
 
 MoonCache is a transport-independent, explainable HTTP cache policy and
-runtime toolkit for MoonBit. It implements the `0.1.3` cache lifecycle:
+runtime toolkit for MoonBit. It implements the `0.2.0` cache lifecycle:
 
 ```text
 Request
@@ -20,7 +20,7 @@ cookie jar, or production reverse proxy.
 
 ## Release status
 
-The `0.1.3` release includes:
+The `0.2.0` release includes:
 
 - normalized request, response, header, URI, and saturating time models;
 - private/shared storage rules and authenticated-request protection;
@@ -29,13 +29,20 @@ The `0.1.3` release includes:
 - ETag and Last-Modified conditional requests;
 - `304 Not Modified` metadata merging with cached-body retention;
 - an HTTP-specific `MemoryStore` with deterministic eviction and limits;
+- a native recoverable `FileStore` with atomic writes, digests, quarantine,
+  and compaction;
+- deterministic request coalescing for concurrent identical fetches;
+- stale resilience: `stale-if-error`, `stale-while-revalidate`,
+  `only-if-cached`, background revalidation, observers, and telemetry;
 - a complete transport-independent `CachedRuntime`;
 - deterministic `FakeTransport` and `RecordingTransport`;
 - redacted text/JSON trace, runtime, and Store statistics reports;
-- a native CLI with explain, validate, and replay commands;
+- a native CLI with scenario commands plus store-backed
+  `stats`/`inspect`/`purge`/`verify`/`clean` and a demo caching proxy (`serve`);
 - optional `f4ah6o/http11` and native `moonbitlang/async/http` adapters;
-- four runnable, self-checking examples;
-- 280 deterministic test blocks with no public-network or real-wait tests.
+- five runnable, self-checking examples including a demo proxy walkthrough;
+- 290 data-driven rule scenarios, differential compatibility fixtures, and
+  deterministic benchmarks — no public-network or real-wait tests.
 
 - Source: [yzy726/MoonCache](https://github.com/yzy726/MoonCache)
 - Package: [Ag108/MoonCache](https://mooncakes.io/docs/Ag108/MoonCache)
@@ -60,7 +67,7 @@ moon check --target wasm-gc --deny-warn
 Add the published release with:
 
 ```bash
-moon add Ag108/MoonCache@0.1.3
+moon add Ag108/MoonCache@0.2.0
 ```
 
 ## Minimal cached runtime
@@ -113,7 +120,7 @@ implementations without changing policy code.
 
 ## CLI
 
-The CLI consumes deterministic JSON scenarios and never performs a network
+Scenario commands consume deterministic JSON and never perform a network
 request:
 
 ```bash
@@ -127,6 +134,35 @@ moon run cmd/main -- replay testdata/scenarios --json
 `replay` sorts paths explicitly and continues after an unreadable or malformed
 individual file, returning a failing exit code with a complete summary.
 
+Native `FileStore` directories can be inspected without a running process:
+
+```bash
+moon run cmd/main -- stats --store .cache/mooncache --json
+moon run cmd/main -- inspect --store .cache/mooncache
+moon run cmd/main -- purge --store .cache/mooncache --uri https://example.test/data
+moon run cmd/main -- verify --store .cache/mooncache
+moon run cmd/main -- clean --store .cache/mooncache
+```
+
+## Demo proxy
+
+`serve` runs a local caching reverse proxy for one upstream origin. It exists
+to demonstrate the runtime end to end (MISS, HIT, REVALIDATE, 304,
+STALE-IF-ERROR, VARY, coalescing) and is not part of the library API:
+
+```bash
+moon run cmd/main -- serve --listen 127.0.0.1:8080 --upstream 127.0.0.1:9000 \
+  [--store .cache/mooncache]
+```
+
+The demo proxy is explicitly **not**:
+
+- a production reverse proxy;
+- TLS terminating (HTTP only);
+- CONNECT capable (no tunneling);
+- HTTP/2 or HTTP/3 aware;
+- suitable for untrusted public traffic.
+
 ## Runnable examples
 
 ```bash
@@ -134,6 +170,7 @@ moon run examples/basic_cache
 moon run examples/vary_language
 moon run examples/etag_revalidation
 moon run examples/shared_private
+moon run examples/demo_proxy
 ```
 
 | Example               | Demonstrates                                                     |
@@ -142,6 +179,7 @@ moon run examples/shared_private
 | `vary_language`     | English and Chinese variants remain independent                  |
 | `etag_revalidation` | stale ETag request receives 304 and retains its body             |
 | `shared_private`    | private cache reuses a private response; shared cache rejects it |
+| `demo_proxy`        | full MISS/HIT/REVALIDATE/304/STALE-IF-ERROR/VARY/coalescing walk |
 
 Every example checks its own expected source, body, variant count, or origin
 call count and exits unsuccessfully on a regression.

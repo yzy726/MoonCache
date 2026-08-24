@@ -20,7 +20,7 @@ Request
 
 ## 发布信息
 
-- 当前版本：`0.1.3`
+- 当前版本：`0.2.0`
 - 代码仓库：[yzy726/MoonCache](https://github.com/yzy726/MoonCache)
 - Mooncakes：[Ag108/MoonCache](https://mooncakes.io/docs/Ag108/MoonCache)
 - 开源许可证：Apache-2.0
@@ -79,7 +79,7 @@ moon check --target wasm-gc --deny-warn
 使用 Moon 安装已发布的软件包：
 
 ```bash
-moon add Ag108/MoonCache@0.1.3
+moon add Ag108/MoonCache@0.2.0
 ```
 
 在 `moon.pkg` 中导入根包：
