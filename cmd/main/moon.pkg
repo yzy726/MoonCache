@@ -1,5 +1,10 @@
 import {
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+  "moonbitlang/async/io",
+  "moonbitlang/async/socket",
   "Ag108/MoonCache" @mooncache,
+  "Ag108/MoonCache/adapters/async_http",
   "Ag108/MoonCache/persistence/file_store",
   "moonbitlang/core/debug",
   "moonbitlang/core/env",
@@ -10,3 +15,7 @@ import {
 pkgtype(kind: "executable")
 
 supported_targets = "native"
+
+options(
+  "native-stub": [ "clock_native.c" ],
+)

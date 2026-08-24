@@ -380,6 +380,44 @@ test "CLI clean purges quarantine leftovers and compacts" {
 }
 
 ///|
+async test "caching proxy serves repeated requests from cache" {
+  let origin_calls = [0]
+  @async.with_task_group() <| group => {
+    let upstream = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    group.spawn_bg(no_wait=true) <| () => {
+      upstream.run_forever() <| ((request, body, connection) => {
+        while body.read_some() is Some(_) {
+
+        }
+        origin_calls[0] = origin_calls[0] + 1
+        connection.send_response(
+          200,
+          "OK",
+          extra_headers=Map([("Cache-Control", "max-age=60")]),
+        )
+        if !(request.meth is Head) {
+          connection.write_string("origin payload")
+        }
+      })
+    }
+    let proxy = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    group.spawn_bg(no_wait=true) <| () => {
+      caching_proxy_loop(proxy, "http://127.0.0.1:\{upstream.addr.port()}", () => {
+        @mooncache.MemoryStore::default()
+      })
+    }
+    let proxy_origin = "http://127.0.0.1:\{proxy.addr.port()}"
+    let (_, first_body) = @http.get("\{proxy_origin}/data")
+    assert_eq(first_body.text(), "origin payload")
+    let (_, second_body) = @http.get("\{proxy_origin}/data")
+    assert_eq(second_body.text(), "origin payload")
+    let (_, missing_body) = @http.get("\{proxy_origin}/missing")
+    assert_eq(missing_body.text(), "origin payload")
+    assert_eq(origin_calls[0], 2)
+  }
+}
+
+///|
 fn cli_variant_entry(
   uri : String,
   language : String,

@@ -14,6 +14,7 @@ priv enum CliCommand {
   Purge(String, String, OutputFormat)
   Verify(String, OutputFormat)
   Clean(String, OutputFormat)
+  Serve(String, String, String?)
   Help
   Version
 }
@@ -37,6 +38,8 @@ fn usage() -> String {
     #|  mooncache purge --store <dir> --uri <url> [--json]
     #|  mooncache verify --store <dir> [--json]
     #|  mooncache clean --store <dir> [--json]
+    #|  mooncache serve --listen 127.0.0.1:8080 --upstream 127.0.0.1:9000
+    #|                    [--store <dir>]
     #|  mooncache --version
     #|
     #|Exit codes:
@@ -74,6 +77,8 @@ fn output_format(args : Array[String]) -> OutputFormat raise CliArgumentError {
 priv struct StoreCommandOptions {
   mut store : String?
   mut uri : String?
+  mut listen : String?
+  mut upstream : String?
   mut format : OutputFormat
 }
 
@@ -84,30 +89,35 @@ fn parse_store_options(
   let options = StoreCommandOptions::{
     store: None,
     uri: None,
+    listen: None,
+    upstream: None,
     format: TextOutput,
   }
   let mut index = 1
   while index < args.length() {
-    match args[index] {
-      "--store" => {
-        guard index + 1 < args.length() else {
-          raise CliArgumentError("--store requires a directory path")
-        }
-        options.store = Some(args[index + 1])
-        index = index + 2
+    let flag = args[index]
+    let takes_value = flag == "--store" ||
+      flag == "--uri" ||
+      flag == "--listen" ||
+      flag == "--upstream"
+    if takes_value {
+      guard index + 1 < args.length() else {
+        raise CliArgumentError("\{flag} requires a value")
       }
-      "--uri" => {
-        guard index + 1 < args.length() else {
-          raise CliArgumentError("--uri requires a URI value")
-        }
-        options.uri = Some(args[index + 1])
-        index = index + 2
+      let value = args[index + 1]
+      match flag {
+        "--store" => options.store = Some(value)
+        "--uri" => options.uri = Some(value)
+        "--listen" => options.listen = Some(value)
+        "--upstream" => options.upstream = Some(value)
+        _ => ()
       }
-      "--json" => {
-        options.format = JsonOutput
-        index = index + 1
-      }
-      token => raise CliArgumentError("unknown option: \{token}")
+      index = index + 2
+    } else if flag == "--json" {
+      options.format = JsonOutput
+      index = index + 1
+    } else {
+      raise CliArgumentError("unknown option: \{flag}")
     }
   }
   options
@@ -401,6 +411,14 @@ fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
       let options = parse_store_options(args)
       Clean(require_store_path("clean", options), options.format)
     }
+    "serve" => {
+      let options = parse_store_options(args)
+      let upstream = match options.upstream {
+        Some(value) => value
+        None => raise CliArgumentError("serve requires --upstream host:port")
+      }
+      Serve(options.listen.unwrap_or("127.0.0.1:8080"), upstream, options.store)
+    }
     command => raise CliArgumentError("unknown command: \{command}")
   }
 }
@@ -629,6 +647,7 @@ fn run(args : Array[String]) -> Int raise {
       println(store_clean_report(path, format))
       0
     }
+    Serve(listen, upstream, store) => serve_command(listen, upstream, store)
   }
 }
 
