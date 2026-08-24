@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/async",
+  "Ag108/MoonCache" @mooncache,
+  "Ag108/MoonCache/concurrency",
+  "Ag108/MoonCache/examples/support",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"
