@@ -1,0 +1,12 @@
+{
+  "name": "compat: Expires-based freshness lifetime",
+  "mode": "private",
+  "now": 30,
+  "request": { "method": "GET", "uri": "https://example.test/g", "headers": {} },
+  "stored_response": {
+    "status": 200,
+    "headers": { "Date": "Thu, 01 Jan 1970 00:00:00 GMT", "Expires": "Thu, 01 Jan 1970 01:00:00 GMT" },
+    "request_time": 0, "response_time": 0, "body": "x", "complete": true
+  },
+  "expected": { "action": "hit", "reason": "MC_FRESH_003" }
+}

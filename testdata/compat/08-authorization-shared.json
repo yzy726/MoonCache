@@ -1,0 +1,12 @@
+{
+  "name": "compat: Authorization blocks shared reuse without qualifiers",
+  "mode": "shared",
+  "now": 10,
+  "request": { "method": "GET", "uri": "https://example.test/h", "headers": { "Authorization": "Bearer t" } },
+  "stored_response": {
+    "status": 200,
+    "headers": { "Cache-Control": "max-age=60" },
+    "request_time": 0, "response_time": 0, "body": "x", "complete": true
+  },
+  "expected": { "action": "fetch", "reason": "MC_AUTH_001" }
+}

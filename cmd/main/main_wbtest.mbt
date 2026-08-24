@@ -459,6 +459,17 @@ test "bundled rule scenarios exceed the final-acceptance floor and all pass" {
 }
 
 ///|
+test "behavior compatibility fixtures match documented reference decisions" {
+  let paths = sorted_json_files("testdata/compat")
+  assert_true(paths.length() >= 10)
+  for path in paths {
+    let text = @fs.read_file_to_string(path)
+    let analysis = @mooncache.analyze_scenario_json(text)
+    assert_true(analysis.valid)
+  }
+}
+
+///|
 fn cli_variant_entry(
   uri : String,
   language : String,

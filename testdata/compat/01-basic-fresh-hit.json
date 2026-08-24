@@ -1,0 +1,12 @@
+{
+  "name": "compat: basic max-age hit matches reference HIT",
+  "mode": "private",
+  "now": 30,
+  "request": { "method": "GET", "uri": "https://example.test/a", "headers": {} },
+  "stored_response": {
+    "status": 200,
+    "headers": { "Cache-Control": "max-age=3600" },
+    "request_time": 0, "response_time": 0, "body": "x", "complete": true
+  },
+  "expected": { "action": "hit", "reason": "MC_FRESH_001" }
+}

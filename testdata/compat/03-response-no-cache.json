@@ -1,0 +1,12 @@
+{
+  "name": "compat: response no-cache forces revalidation (reference REVALIDATE)",
+  "mode": "private",
+  "now": 5,
+  "request": { "method": "GET", "uri": "https://example.test/c", "headers": {} },
+  "stored_response": {
+    "status": 200,
+    "headers": { "Cache-Control": "no-cache", "ETag": "\"nc\"" },
+    "request_time": 0, "response_time": 0, "body": "x", "complete": true
+  },
+  "expected": { "action": "revalidate", "reason": "MC_REVAL_001" }
+}

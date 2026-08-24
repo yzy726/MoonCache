@@ -1,0 +1,12 @@
+{
+  "name": "compat: s-maxage wins over max-age in shared caches",
+  "mode": "shared",
+  "now": 100,
+  "request": { "method": "GET", "uri": "https://example.test/j", "headers": {} },
+  "stored_response": {
+    "status": 200,
+    "headers": { "Cache-Control": "max-age=20, s-maxage=300" },
+    "request_time": 0, "response_time": 0, "body": "x", "complete": true
+  },
+  "expected": { "action": "hit", "reason": "MC_FRESH_002" }
+}
