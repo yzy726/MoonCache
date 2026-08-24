@@ -238,6 +238,58 @@ test "CLI inspect lists cached URIs with variants" {
 }
 
 ///|
+test "CLI parses purge with store and uri options" {
+  assert_true(
+    parse_command([
+      "purge", "--store", "cachedir", "--uri", "https://example.test/a",
+    ])
+    is Purge("cachedir", "https://example.test/a", TextOutput),
+  )
+  assert_true(
+    parse_command([
+      "purge", "--store", "cachedir", "--uri", "https://example.test/a", "--json",
+    ])
+    is Purge("cachedir", "https://example.test/a", JsonOutput),
+  )
+}
+
+///|
+test "CLI rejects purge without required options" {
+  let missing_store : Result[CliCommand, CliArgumentError] = Ok(
+    parse_command(["purge", "--uri", "https://example.test/a"]),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(
+    missing_store is Err(CliArgumentError("purge requires --store <path>")),
+  )
+  let missing_uri : Result[CliCommand, CliArgumentError] = Ok(
+    parse_command(["purge", "--store", "cachedir"]),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(
+    missing_uri is Err(CliArgumentError("purge requires --uri <url>")),
+  )
+}
+
+///|
+test "CLI purge removes every variant of one URI" {
+  let root = "target/mooncache_cli_tests/purge"
+  prepare_cli_store(root, [
+    cli_test_entry("https://example.test/a", 100),
+    cli_variant_entry("https://example.test/b", "en", 110),
+    cli_variant_entry("https://example.test/b", "zh", 120),
+  ])
+  let text = store_purge_report(root, "https://example.test/b", TextOutput)
+  assert_true(text.contains("Purged 2 entries"))
+  let json = store_purge_report(root, "https://example.test/b", JsonOutput)
+  assert_true(json.contains("\"removed\": 0"))
+  let remaining = store_inspect_report(root, TextOutput)
+  assert_true(remaining.contains("Cached URIs: 1"))
+}
+
+///|
 fn cli_variant_entry(
   uri : String,
   language : String,

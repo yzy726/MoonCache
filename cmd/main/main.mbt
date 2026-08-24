@@ -11,6 +11,7 @@ priv enum CliCommand {
   Replay(String, OutputFormat)
   Stats(String, OutputFormat)
   Inspect(String, OutputFormat)
+  Purge(String, String, OutputFormat)
   Help
   Version
 }
@@ -31,6 +32,7 @@ fn usage() -> String {
     #|  mooncache replay <scenario-directory> [--json]
     #|  mooncache stats --store <dir> [--json]
     #|  mooncache inspect --store <dir> [--json]
+    #|  mooncache purge --store <dir> --uri <url> [--json]
     #|  mooncache --version
     #|
     #|Exit codes:
@@ -67,6 +69,7 @@ fn output_format(args : Array[String]) -> OutputFormat raise CliArgumentError {
 ///|
 priv struct StoreCommandOptions {
   mut store : String?
+  mut uri : String?
   mut format : OutputFormat
 }
 
@@ -74,7 +77,11 @@ priv struct StoreCommandOptions {
 fn parse_store_options(
   args : Array[String],
 ) -> StoreCommandOptions raise CliArgumentError {
-  let options = StoreCommandOptions::{ store: None, format: TextOutput }
+  let options = StoreCommandOptions::{
+    store: None,
+    uri: None,
+    format: TextOutput,
+  }
   let mut index = 1
   while index < args.length() {
     match args[index] {
@@ -83,6 +90,13 @@ fn parse_store_options(
           raise CliArgumentError("--store requires a directory path")
         }
         options.store = Some(args[index + 1])
+        index = index + 2
+      }
+      "--uri" => {
+        guard index + 1 < args.length() else {
+          raise CliArgumentError("--uri requires a URI value")
+        }
+        options.uri = Some(args[index + 1])
         index = index + 2
       }
       "--json" => {
@@ -103,6 +117,17 @@ fn require_store_path(
   match options.store {
     Some(path) => path
     None => raise CliArgumentError("\{command} requires --store <path>")
+  }
+}
+
+///|
+fn require_uri_value(
+  command : String,
+  options : StoreCommandOptions,
+) -> String raise CliArgumentError {
+  match options.uri {
+    Some(uri) => uri
+    None => raise CliArgumentError("\{command} requires --uri <url>")
   }
 }
 
@@ -201,6 +226,23 @@ fn store_inspect_report(path : String, format : OutputFormat) -> String raise {
 }
 
 ///|
+fn store_purge_report(
+  path : String,
+  uri : String,
+  format : OutputFormat,
+) -> String raise {
+  let store = open_cli_store(path)
+  let removed = store.invalidate_uri(uri)
+  match format {
+    JsonOutput =>
+      Json::object({ "uri": Json::string(uri), "removed": removed }).stringify(
+        indent=2,
+      )
+    TextOutput => "Purged \{removed} entries for \{uri}"
+  }
+}
+
+///|
 fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
   guard args.length() > 0 else { return Help }
   match args[0] {
@@ -241,6 +283,14 @@ fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
     "inspect" => {
       let options = parse_store_options(args)
       Inspect(require_store_path("inspect", options), options.format)
+    }
+    "purge" => {
+      let options = parse_store_options(args)
+      Purge(
+        require_store_path("purge", options),
+        require_uri_value("purge", options),
+        options.format,
+      )
     }
     command => raise CliArgumentError("unknown command: \{command}")
   }
@@ -456,6 +506,10 @@ fn run(args : Array[String]) -> Int raise {
     }
     Inspect(path, format) => {
       println(store_inspect_report(path, format))
+      0
+    }
+    Purge(path, uri, format) => {
+      println(store_purge_report(path, uri, format))
       0
     }
   }
