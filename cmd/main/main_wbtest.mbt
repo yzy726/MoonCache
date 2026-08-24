@@ -114,3 +114,83 @@ test "CLI replay JSON includes summary and cases" {
   assert_true(report.contains("\"action\": \"FETCH\""))
   assert_true(report.contains("\"valid\": true"))
 }
+
+///|
+fn cli_test_entry(uri : String, tick : Int64) -> @mooncache.StoredEntry {
+  let headers = @mooncache.HeaderMap::new()
+  ignore(headers.append("Cache-Control", "max-age=60"))
+  let request = @mooncache.RequestMeta::new(
+    "GET",
+    uri,
+    @mooncache.HeaderMap::new(),
+    @mooncache.Timestamp::from_seconds(tick),
+  )
+  let response = @mooncache.ResponseMeta::complete(
+    200,
+    headers,
+    @mooncache.Timestamp::from_seconds(tick),
+    @mooncache.Timestamp::from_seconds(tick),
+  )
+  let primary = @mooncache.PrimaryCacheKey::from_request(request).unwrap()
+  let variant = @mooncache.build_variant_key(
+    request.headers,
+    @mooncache.parse_vary(response.headers),
+  ).unwrap()
+  @mooncache.StoredEntry::new(
+    primary,
+    variant,
+    request,
+    response,
+    b"payload",
+    @mooncache.StoredPolicy::cacheable(
+      @mooncache.DeltaSeconds::from_seconds(60),
+      false,
+    ),
+    @mooncache.Timestamp::from_seconds(tick),
+  )
+}
+
+///|
+fn prepare_cli_store(
+  root : String,
+  entries : Array[@mooncache.StoredEntry],
+) -> Unit raise {
+  let store = @file_store.FileStore::open(root)
+  for entry in entries {
+    ignore(store.put(entry))
+  }
+}
+
+///|
+test "CLI parses store stats with --store option" {
+  assert_true(
+    parse_command(["stats", "--store", "cachedir"])
+    is Stats("cachedir", TextOutput),
+  )
+  assert_true(
+    parse_command(["stats", "--store", "cachedir", "--json"])
+    is Stats("cachedir", JsonOutput),
+  )
+}
+
+///|
+test "CLI rejects stats without --store path" {
+  let result : Result[CliCommand, CliArgumentError] = Ok(
+    parse_command(["stats"]),
+  ) catch {
+    error => Err(error)
+  }
+  assert_true(result is Err(CliArgumentError("stats requires --store <path>")))
+}
+
+///|
+test "CLI store stats reports persisted entry counts" {
+  let root = "target/mooncache_cli_tests/stats"
+  prepare_cli_store(root, [cli_test_entry("https://example.test/data", 100)])
+  let text = store_stats_report(root, TextOutput)
+  assert_true(text.contains("Entries: 1"))
+  assert_true(text.contains("Body bytes: 7"))
+  let json = store_stats_report(root, JsonOutput)
+  assert_true(json.contains("\"entries\": 1"))
+  assert_true(json.contains("\"body_bytes\": 7"))
+}

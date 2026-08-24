@@ -1,5 +1,6 @@
 import {
   "Ag108/MoonCache" @mooncache,
+  "Ag108/MoonCache/persistence/file_store",
   "moonbitlang/core/debug",
   "moonbitlang/core/env",
   "moonbitlang/core/json",

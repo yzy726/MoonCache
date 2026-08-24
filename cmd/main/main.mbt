@@ -9,6 +9,7 @@ priv enum CliCommand {
   Explain(String, OutputFormat)
   Validate(String, OutputFormat)
   Replay(String, OutputFormat)
+  Stats(String, OutputFormat)
   Help
   Version
 }
@@ -27,6 +28,7 @@ fn usage() -> String {
     #|  mooncache explain <scenario.json> [--json]
     #|  mooncache validate <scenario.json> [--json]
     #|  mooncache replay <scenario-directory> [--json]
+    #|  mooncache stats --store <dir> [--json]
     #|  mooncache --version
     #|
     #|Exit codes:
@@ -57,6 +59,66 @@ fn output_format(args : Array[String]) -> OutputFormat raise CliArgumentError {
         raise CliArgumentError("unknown option: \{args[2]}")
       }
     _ => raise CliArgumentError("wrong number of arguments")
+  }
+}
+
+///|
+priv struct StoreCommandOptions {
+  mut store : String?
+  mut format : OutputFormat
+}
+
+///|
+fn parse_store_options(
+  args : Array[String],
+) -> StoreCommandOptions raise CliArgumentError {
+  let options = StoreCommandOptions::{ store: None, format: TextOutput }
+  let mut index = 1
+  while index < args.length() {
+    match args[index] {
+      "--store" => {
+        guard index + 1 < args.length() else {
+          raise CliArgumentError("--store requires a directory path")
+        }
+        options.store = Some(args[index + 1])
+        index = index + 2
+      }
+      "--json" => {
+        options.format = JsonOutput
+        index = index + 1
+      }
+      token => raise CliArgumentError("unknown option: \{token}")
+    }
+  }
+  options
+}
+
+///|
+fn require_store_path(
+  command : String,
+  options : StoreCommandOptions,
+) -> String raise CliArgumentError {
+  match options.store {
+    Some(path) => path
+    None => raise CliArgumentError("\{command} requires --store <path>")
+  }
+}
+
+///|
+fn open_cli_store(
+  path : String,
+) -> @file_store.FileStore raise CliArgumentError {
+  @file_store.FileStore::open(path) catch {
+    error => raise CliArgumentError(@file_store.FileStoreError::message(error))
+  }
+}
+
+///|
+fn store_stats_report(path : String, format : OutputFormat) -> String raise {
+  let store = open_cli_store(path)
+  match format {
+    JsonOutput => store.stats().json_report()
+    TextOutput => store.stats().text_report()
   }
 }
 
@@ -93,6 +155,10 @@ fn parse_command(args : Array[String]) -> CliCommand raise CliArgumentError {
         raise CliArgumentError("replay requires a scenario directory")
       }
       Replay(args[1], output_format(args))
+    }
+    "stats" => {
+      let options = parse_store_options(args)
+      Stats(require_store_path("stats", options), options.format)
     }
     command => raise CliArgumentError("unknown command: \{command}")
   }
@@ -302,6 +368,10 @@ fn run(args : Array[String]) -> Int raise {
     }
     Validate(path, format) => if validate(path, format) { 0 } else { 1 }
     Replay(directory, format) => if replay(directory, format) { 0 } else { 1 }
+    Stats(path, format) => {
+      println(store_stats_report(path, format))
+      0
+    }
   }
 }
 
