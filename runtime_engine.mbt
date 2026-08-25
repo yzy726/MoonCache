@@ -508,6 +508,9 @@ pub fn[S, T, O : CacheObserver] CachedRuntime::with_observer(
 }
 
 ///|
+/// The error path must inspect `err` for telemetry messaging before
+/// re-raising, so the mechanical `errdefer` rewrite does not apply here.
+#warnings("-fragile_catch_all")
 pub fn[S : CacheStore, T : Transport] CachedRuntime::execute(
   self : CachedRuntime[S, T],
   request : RuntimeRequest,

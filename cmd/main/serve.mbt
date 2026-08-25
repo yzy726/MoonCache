@@ -33,7 +33,7 @@ fn normalize_upstream_origin(origin : String) -> String raise CliArgumentError {
   } else {
     base.length() - 1
   }
-  let builder = StringBuilder::new()
+  let builder = StringBuilder()
   let mut index = 0
   for ch in base {
     if index < limit {

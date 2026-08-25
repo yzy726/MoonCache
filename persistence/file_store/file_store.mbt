@@ -819,6 +819,7 @@ pub fn FileStore::find_variants(
 }
 
 ///|
+#warnings("-fragile_catch_all")
 pub fn FileStore::put_checked(
   self : FileStore,
   entry : @mooncache.StoredEntry,
@@ -877,6 +878,7 @@ pub fn FileStore::put(
 }
 
 ///|
+#warnings("-fragile_catch_all")
 pub fn FileStore::remove_variant_checked(
   self : FileStore,
   key : @mooncache.PrimaryCacheKey,
@@ -909,6 +911,7 @@ pub fn FileStore::remove_variant(
 }
 
 ///|
+#warnings("-fragile_catch_all")
 pub fn FileStore::invalidate_uri_checked(
   self : FileStore,
   uri : String,
@@ -938,6 +941,7 @@ pub fn FileStore::invalidate_uri(self : FileStore, uri : String) -> Int {
 }
 
 ///|
+#warnings("-fragile_catch_all")
 pub fn FileStore::clear_checked(self : FileStore) -> Unit raise FileStoreError {
   let before = self.snapshot_entries()
   self.memory.clear()

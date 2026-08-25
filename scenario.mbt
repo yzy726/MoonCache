@@ -63,7 +63,7 @@ pub fn parse_scenario(text : String) -> CacheScenario raise ScenarioError {
 
 ///|
 pub fn scenario_to_json(scenario : CacheScenario) -> String {
-  scenario.to_json().stringify(indent=2)
+  ToJson::to_json(scenario).stringify(indent=2)
 }
 
 ///|

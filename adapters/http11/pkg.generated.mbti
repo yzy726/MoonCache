@@ -31,4 +31,3 @@ pub fn Http11AdapterError::message(Self) -> String
 // Type aliases
 
 // Traits
-
