@@ -1,5 +1,6 @@
 ///|
 /// Evaluation of RFC 5861 stale extensions for one stored response.
+#derive(Eq, Debug)
 pub(all) struct StalePolicy {
   is_stale : Bool
   stale_by : DeltaSeconds
@@ -8,7 +9,7 @@ pub(all) struct StalePolicy {
   stale_if_error_allowed : Bool
   stale_while_revalidate_allowed : Bool
   prohibited : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 fn minimum_optional_window(
@@ -49,7 +50,7 @@ pub fn evaluate_stale_policy(
     response_directives.no_cache ||
     response_directives.must_revalidate ||
     (options.mode is Shared && response_directives.proxy_revalidate)
-  StalePolicy::{
+  {
     is_stale,
     stale_by,
     stale_if_error_window,
@@ -72,6 +73,12 @@ pub fn evaluate_stale_policy(
 
 ///|
 /// RFC 5861 defines these statuses as errors eligible for stale-if-error.
-pub fn is_stale_if_error_status(status : Int) -> Bool {
+pub fn is_stale_if_error_status(status : Int32) -> Bool {
   status == 500 || status == 502 || status == 503 || status == 504
 }
+
+///|
+pub extend StalePolicy with @debug.Debug::{to_repr}
+
+///|
+pub extend StalePolicy with Eq::{not_equal, equal}

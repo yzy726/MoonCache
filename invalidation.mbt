@@ -53,10 +53,11 @@ fn append_unique_uri(uris : Array[String], uri : String) -> Bool {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct InvalidationPlan {
   uris : Array[String]
   reasons : Array[CacheReason]
-} derive(Eq, Debug)
+}
 
 ///|
 /// RFC 9111 invalidation plan for a non-error response to an unsafe method.
@@ -72,13 +73,13 @@ pub fn plan_invalidation(
     reasons.push(
       CacheReason::with_rfc(InvalidateSkippedSafeMethod, "RFC9111-4.4"),
     )
-    return InvalidationPlan::{ uris, reasons }
+    return { uris, reasons, }
   }
   if response.status < 200 || response.status >= 400 {
     reasons.push(
       CacheReason::with_rfc(InvalidateSkippedErrorStatus, "RFC9111-4.4"),
     )
-    return InvalidationPlan::{ uris, reasons }
+    return { uris, reasons, }
   }
   match normalize_cache_uri(request.uri) {
     Some(target) => {
@@ -106,5 +107,11 @@ pub fn plan_invalidation(
     }
     None => ()
   }
-  InvalidationPlan::{ uris, reasons }
+  { uris, reasons, }
 }
+
+///|
+pub extend InvalidationPlan with @debug.Debug::{to_repr}
+
+///|
+pub extend InvalidationPlan with Eq::{not_equal, equal}

@@ -1,10 +1,11 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct ScenarioAnalysis {
   name : String
   trace : CacheTrace
   valid : Bool
   errors : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 fn scenario_mode(value : String) -> CacheMode raise ScenarioError {
@@ -143,12 +144,7 @@ pub fn analyze_scenario(
     }
     None => ()
   }
-  ScenarioAnalysis::{
-    name: scenario.name,
-    trace,
-    valid: errors.length() == 0,
-    errors,
-  }
+  { name: scenario.name, trace, valid: errors.length() == 0, errors, }
 }
 
 ///|
@@ -185,3 +181,9 @@ pub fn validate_scenario_text(text : String) -> String raise ScenarioError {
     "INVALID: \{analysis.name}\n- \{errors}"
   }
 }
+
+///|
+pub extend ScenarioAnalysis with @debug.Debug::{to_repr}
+
+///|
+pub extend ScenarioAnalysis with Eq::{not_equal, equal}

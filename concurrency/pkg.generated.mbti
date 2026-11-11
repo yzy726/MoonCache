@@ -22,6 +22,7 @@ pub(all) struct RequestGroupResult[X] {
   coalesced : Bool
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RequestGroupStats {
   started : Int64
   coalesced : Int64
@@ -29,10 +30,13 @@ pub(all) struct RequestGroupStats {
   failed : Int64
   cancelled_waiters : Int64
   cancelled_flights : Int64
-  active_flights : Int
-  active_waiters : Int
-  peak_active_flights : Int
-} derive(Eq, @debug.Debug)
+  active_flights : Int32
+  active_waiters : Int32
+  peak_active_flights : Int32
+}
+pub fn RequestGroupStats::equal(Self, Self) -> Bool
+pub fn RequestGroupStats::not_equal(Self, Self) -> Bool
+pub fn RequestGroupStats::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

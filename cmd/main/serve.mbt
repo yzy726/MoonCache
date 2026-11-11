@@ -45,7 +45,7 @@ fn normalize_upstream_origin(origin : String) -> String raise CliArgumentError {
 }
 
 ///|
-fn status_reason(status : Int) -> String {
+fn status_reason(status : Int32) -> String {
   match status {
     200 => "OK"
     201 => "Created"
@@ -77,7 +77,8 @@ fn status_reason(status : Int) -> String {
 ///|
 fn proxy_request_headers(request : @http.Request) -> @mooncache.HeaderMap {
   let headers = @mooncache.HeaderMap::new()
-  for name, value in request.headers {
+  for key, value in request.headers {
+    let name = key.to_string()
     if !hop_by_hop_header(name) && name.to_lower() != "host" {
       ignore(headers.append(name, value))
     }
@@ -112,7 +113,11 @@ async fn[S : @mooncache.CacheStore] handle_proxy_request(
       connection.send_response(
         response.meta.status,
         status_reason(response.meta.status),
-        extra_headers=@async_http.headers_to_async_http(response.meta.headers),
+        extra_headers=Map::from_iter(
+          @async_http.headers_to_async_http(response.meta.headers)
+          .iter()
+          .map(fn(pair) { (CaseInsensitiveString(pair.0), pair.1) }),
+        ),
       )
       if !(request.meth is Head) && response.body.length() > 0 {
         connection.write(response.body)
@@ -209,7 +214,7 @@ fn serve_command(
   listen : String,
   upstream : String,
   store_path : String?,
-) -> Int {
+) -> Int32 {
   @async.run_async_main(() => serve_entry(listen, upstream, store_path))
   0
 }

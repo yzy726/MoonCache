@@ -1,15 +1,16 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct MemoryStoreOptions {
-  max_entries : Int
+  max_entries : Int32
   max_body_bytes : Int64
   max_body_size : Int64
   strip_set_cookie : Bool
   strip_request_credentials : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn MemoryStoreOptions::default() -> MemoryStoreOptions {
-  MemoryStoreOptions::{
+  {
     max_entries: 256,
     max_body_bytes: 64 * 1_024 * 1_024,
     max_body_size: 8 * 1_024 * 1_024,
@@ -20,11 +21,11 @@ pub fn MemoryStoreOptions::default() -> MemoryStoreOptions {
 
 ///|
 pub fn MemoryStoreOptions::with_limits(
-  max_entries : Int,
+  max_entries : Int32,
   max_body_bytes : Int64,
   max_body_size : Int64,
 ) -> MemoryStoreOptions {
-  MemoryStoreOptions::{
+  {
     ..MemoryStoreOptions::default(),
     max_entries,
     max_body_bytes,
@@ -35,7 +36,7 @@ pub fn MemoryStoreOptions::with_limits(
 ///|
 pub fn MemoryStoreOptions::with_entry_limit(
   self : MemoryStoreOptions,
-  max_entries : Int,
+  max_entries : Int32,
 ) -> MemoryStoreOptions {
   { ..self, max_entries, }
 }
@@ -73,17 +74,19 @@ pub fn MemoryStoreOptions::with_request_credential_stripping(
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum StorePutResult {
   StoreInserted
   StoreReplacedResult
   StoreRejectedNoStore
   StoreRejectedOversized
   StoreRejectedCapacity
-} derive(Eq, Compare, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StoreStats {
-  entries : Int
+  entries : Int32
   body_bytes : Int64
   puts : Int64
   replacements : Int64
@@ -93,14 +96,14 @@ pub(all) struct StoreStats {
   misses : Int64
   invalidated_entries : Int64
   rejected_entries : Int64
-} derive(Eq, Debug)
+}
 
 ///|
 pub(open) trait CacheStore {
   fn find_variants(Self, PrimaryCacheKey) -> Array[StoredEntry]
   fn put(Self, StoredEntry) -> StorePutResult
   fn remove_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
-  fn invalidate_uri(Self, String) -> Int
+  fn invalidate_uri(Self, String) -> Int32
   fn clear(Self) -> Unit
   fn stats(Self) -> StoreStats
 }
@@ -131,7 +134,7 @@ pub struct MemoryStore {
 
 ///|
 pub fn MemoryStore::new(options : MemoryStoreOptions) -> MemoryStore {
-  MemoryStore::{
+  {
     options,
     records: [],
     body_bytes: 0,
@@ -229,9 +232,9 @@ fn sanitize_stored_entry(
   options : MemoryStoreOptions,
 ) -> StoredEntry {
   let vary = parse_vary(entry.response.headers)
-  StoredEntry::{
+  {
     ..entry,
-    request: RequestMeta::{
+    request: {
       ..entry.request,
       headers: copy_stored_request_headers(
         entry.request.headers,
@@ -239,7 +242,7 @@ fn sanitize_stored_entry(
         options.strip_request_credentials,
       ),
     },
-    response: ResponseMeta::{
+    response: {
       ..entry.response,
       headers: copy_stored_response_headers(
         entry.response.headers,
@@ -252,7 +255,7 @@ fn sanitize_stored_entry(
 ///|
 fn MemoryStore::remove_record_at(
   self : MemoryStore,
-  index : Int,
+  index : Int32,
 ) -> StoreRecord {
   let removed = self.records.remove(index)
   self.body_bytes = self.body_bytes - removed.entry.body_size()
@@ -264,7 +267,7 @@ fn MemoryStore::replacement_index(
   self : MemoryStore,
   key : PrimaryCacheKey,
   variant : VariantKey,
-) -> Int? {
+) -> Int32? {
   for index = 0; index < self.records.length(); index = index + 1 {
     let entry = self.records[index].entry
     if entry.primary_key == key && entry.variant_key == variant {
@@ -275,7 +278,7 @@ fn MemoryStore::replacement_index(
 }
 
 ///|
-fn MemoryStore::eviction_index(self : MemoryStore) -> Int {
+fn MemoryStore::eviction_index(self : MemoryStore) -> Int32 {
   let mut selected = 0
   for index = 1; index < self.records.length(); index = index + 1 {
     let candidate = self.records[index]
@@ -354,11 +357,7 @@ pub fn MemoryStore::put(
     None => ()
   }
   let order = next_store_order(self)
-  self.records.push(StoreRecord::{
-    entry,
-    access_order: order,
-    insertion_order: order,
-  })
+  self.records.push({ entry, access_order: order, insertion_order: order, })
   self.body_bytes = self.body_bytes + size
   self.puts = self.puts + 1
   self.evict_to_limits()
@@ -385,7 +384,7 @@ pub fn MemoryStore::remove_variant(
 }
 
 ///|
-pub fn MemoryStore::invalidate_uri(self : MemoryStore, uri : String) -> Int {
+pub fn MemoryStore::invalidate_uri(self : MemoryStore, uri : String) -> Int32 {
   let target = normalize_cache_uri(uri).unwrap_or(uri.trim().to_owned())
   let mut removed = 0
   let mut index = self.records.length() - 1
@@ -408,7 +407,7 @@ pub fn MemoryStore::clear(self : MemoryStore) -> Unit {
 
 ///|
 pub fn MemoryStore::stats(self : MemoryStore) -> StoreStats {
-  StoreStats::{
+  {
     entries: self.records.length(),
     body_bytes: self.body_bytes,
     puts: self.puts,
@@ -446,7 +445,7 @@ pub fn MemoryStore::peek_variants(
 }
 
 ///|
-pub fn MemoryStore::variant_count(self : MemoryStore, uri : String) -> Int {
+pub fn MemoryStore::variant_count(self : MemoryStore, uri : String) -> Int32 {
   self.peek_variants(uri).length()
 }
 
@@ -460,7 +459,7 @@ pub fn MemoryStore::contains_variant(
 }
 
 ///|
-fn compare_store_uris(left : String, right : String) -> Int {
+fn compare_store_uris(left : String, right : String) -> Int32 {
   if left < right {
     -1
   } else if left > right {
@@ -513,3 +512,24 @@ pub impl CacheStore for MemoryStore with fn clear(self) {
 pub impl CacheStore for MemoryStore with fn stats(self) {
   MemoryStore::stats(self)
 }
+
+///|
+pub extend MemoryStoreOptions with @debug.Debug::{to_repr}
+
+///|
+pub extend MemoryStoreOptions with Eq::{not_equal, equal}
+
+///|
+pub extend StorePutResult with @debug.Debug::{to_repr}
+
+///|
+pub extend StorePutResult with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend StorePutResult with Eq::{not_equal, equal}
+
+///|
+pub extend StoreStats with @debug.Debug::{to_repr}
+
+///|
+pub extend StoreStats with Eq::{not_equal, equal}

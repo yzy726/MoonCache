@@ -1,6 +1,6 @@
 ///|
 fn async_response(
-  status : Int,
+  status : Int32,
   headers : Array[(String, String)],
   body : Bytes,
   request_time : Int64,
@@ -29,7 +29,7 @@ struct AsyncRecordingObserver {
 
 ///|
 fn AsyncRecordingObserver::new() -> AsyncRecordingObserver {
-  AsyncRecordingObserver::{ events: [] }
+  { events: [], }
 }
 
 ///|
@@ -42,7 +42,7 @@ impl @mooncache.CacheObserver for AsyncRecordingObserver with fn observe(
 
 ///|
 fn DelayedFailureTransport::new() -> DelayedFailureTransport {
-  DelayedFailureTransport::{ calls: [] }
+  { calls: [], }
 }
 
 ///|
@@ -693,13 +693,8 @@ async test "cancelling a flight leader still delivers to its follower" {
   let follower_body = [b""]
   @async.with_task_group() <| tasks => {
     let leader = tasks.spawn(allow_failure=true) <| () => {
-      try client.get("https://example.test/cancel") |> ignore catch {
-        error if @async.is_cancellation_error(error) => {
-          leader_cancelled[0] = true
-          raise error
-        }
-        error => raise error
-      }
+      defer (if @async.is_being_cancelled() { leader_cancelled[0] = true })
+      client.get("https://example.test/cancel") |> ignore
     }
     @async.sleep(2)
     tasks.spawn_bg() <| () => {

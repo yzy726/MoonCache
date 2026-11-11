@@ -2,6 +2,7 @@
 /// Cache directives used by both request and response policy. Unknown
 /// extensions are intentionally ignored; malformed delta-seconds never become
 /// permissive values.
+#derive(Eq, Debug)
 pub(all) struct CacheControl {
   mut no_cache : Bool
   mut no_store : Bool
@@ -19,11 +20,11 @@ pub(all) struct CacheControl {
   mut stale_if_error : DeltaSeconds?
   mut stale_while_revalidate : DeltaSeconds?
   mut malformed_delta : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn CacheControl::new() -> CacheControl {
-  CacheControl::{
+  {
     no_cache: false,
     no_store: false,
     is_private: false,
@@ -49,7 +50,7 @@ fn unquote_directive_value(value : String) -> String {
   if trimmed.length() >= 2 &&
     trimmed.has_prefix("\"") &&
     trimmed.has_suffix("\"") {
-    trimmed.sub(start=1, end=trimmed.length() - 1).to_owned()
+    trimmed.exact_view(start=1, end=trimmed.length() - 1).to_owned()
   } else {
     trimmed
   }
@@ -68,7 +69,7 @@ pub fn parse_delta_seconds(value : String) -> DeltaSeconds? {
       return None
     }
   }
-  let parsed : Int64? = Some(@strconv.from_str(cleaned)) catch { _ => None }
+  let parsed : Int64? = Some(@string.parse_int64(cleaned)) catch { _ => None }
   match parsed {
     Some(seconds) => Some(DeltaSeconds::from_seconds(seconds))
     None => None
@@ -209,3 +210,9 @@ pub fn request_has_legacy_no_cache(headers : HeaderMap) -> Bool {
     None => false
   }
 }
+
+///|
+pub extend CacheControl with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheControl with Eq::{not_equal, equal}

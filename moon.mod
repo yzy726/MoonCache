@@ -11,7 +11,7 @@
 
 name = "Ag108/MoonCache"
 
-version = "0.2.0"
+version = "0.3.0"
 
 readme = "README.mbt.md"
 
@@ -26,11 +26,7 @@ preferred_target = "native"
 description = "A transport-independent, explainable HTTP cache policy and runtime toolkit."
 
 import {
-  "moonbitlang/x@0.4.46",
-  "moonbitlang/async@0.20.2",
-  "f4ah6o/http11@0.1.1",
+  "moonbitlang/x@0.5.7",
+  "moonbitlang/async@0.22.9",
+  "f4ah6o/http11@0.1.2",
 }
-
-options(
-  exclude: [ "AGENTS.md", "goal.md" ],
-)

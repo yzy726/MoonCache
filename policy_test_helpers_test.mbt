@@ -18,7 +18,7 @@ fn policy_request(
 
 ///|
 fn policy_response(
-  status : Int,
+  status : Int32,
   pairs : Array[(String, String)],
   request_time : Int64,
   response_time : Int64,
@@ -116,7 +116,7 @@ fn policy_entry_for_uri(
 
 ///|
 fn scripted_response(
-  status : Int,
+  status : Int32,
   pairs : Array[(String, String)],
   body : Bytes,
   request_time : Int64,

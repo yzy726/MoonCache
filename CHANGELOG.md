@@ -2,6 +2,11 @@
 
 All notable changes are documented here.
 
+## 0.3.0 - 2026-11-11
+
+- Support MoonBit 0.10.20 and migrate deprecated syntax while preserving existing trait methods.
+- Update HTTP and async dependencies for the current toolchain.
+
 ## 0.2.0 - 2026-08-24
 
 ### Added

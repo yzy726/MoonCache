@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct RequestPolicy {
   bypass : Bool
   force_revalidation : Bool
@@ -7,12 +8,12 @@ pub(all) struct RequestPolicy {
   min_fresh : DeltaSeconds
   max_stale : DeltaSeconds?
   max_stale_unbounded : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn evaluate_request_policy(request : RequestMeta) -> RequestPolicy {
   let directives = cache_control_from_headers(request.headers)
-  RequestPolicy::{
+  {
     bypass: directives.no_store,
     force_revalidation: directives.no_cache ||
     request_has_legacy_no_cache(request.headers),
@@ -35,3 +36,9 @@ pub fn RequestPolicy::allows_stale(
     None => false
   })
 }
+
+///|
+pub extend RequestPolicy with @debug.Debug::{to_repr}
+
+///|
+pub extend RequestPolicy with Eq::{not_equal, equal}

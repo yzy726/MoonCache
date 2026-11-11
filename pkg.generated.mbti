@@ -41,11 +41,11 @@ pub fn explain_scenario_text(String) -> String raise ScenarioError
 
 pub fn has_usable_validator(ResponseMeta) -> Bool
 
-pub fn is_default_cacheable_status(Int) -> Bool
+pub fn is_default_cacheable_status(Int32) -> Bool
 
 pub fn is_safe_http_method(String) -> Bool
 
-pub fn is_stale_if_error_status(Int) -> Bool
+pub fn is_stale_if_error_status(Int32) -> Bool
 
 pub fn is_valid_etag(String) -> Bool
 
@@ -92,28 +92,45 @@ pub fn select_variant(Array[StoredEntry], RequestMeta) -> VariantSelection
 pub fn validate_scenario_text(String) -> String raise ScenarioError
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub suberror RuntimeError {
   RuntimeTransportFailure(String)
-} derive(Eq, @debug.Debug)
+}
+pub fn RuntimeError::equal(Self, Self) -> Bool
 pub fn RuntimeError::message(Self) -> String
+pub fn RuntimeError::not_equal(Self, Self) -> Bool
+pub fn RuntimeError::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub suberror ScenarioError {
   ScenarioError(String)
-} derive(Eq, @debug.Debug)
+}
+pub fn ScenarioError::equal(Self, Self) -> Bool
 pub fn ScenarioError::message(Self) -> String
+pub fn ScenarioError::not_equal(Self, Self) -> Bool
+pub fn ScenarioError::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub suberror TransportError {
   ScriptExhausted
   ScriptedTransportFailure(String)
-} derive(Eq, @debug.Debug)
+}
+pub fn TransportError::equal(Self, Self) -> Bool
 pub fn TransportError::message(Self) -> String
+pub fn TransportError::not_equal(Self, Self) -> Bool
+pub fn TransportError::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub suberror ValidationError {
-  ExpectedNotModified(Int)
-} derive(Eq, @debug.Debug)
+  ExpectedNotModified(Int32)
+}
+pub fn ValidationError::equal(Self, Self) -> Bool
 pub fn ValidationError::message(Self) -> String
+pub fn ValidationError::not_equal(Self, Self) -> Bool
+pub fn ValidationError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct AgeCalculation {
   apparent_age : DeltaSeconds
   response_delay : DeltaSeconds
@@ -124,8 +141,12 @@ pub(all) struct AgeCalculation {
   current_age : DeltaSeconds
   clock_clamped : Bool
   overflow_clamped : Bool
-} derive(Eq, @debug.Debug)
+}
+pub fn AgeCalculation::equal(Self, Self) -> Bool
+pub fn AgeCalculation::not_equal(Self, Self) -> Bool
+pub fn AgeCalculation::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum CacheActionKind {
   ServeFresh
   Revalidate
@@ -133,9 +154,18 @@ pub(all) enum CacheActionKind {
   ServeStale
   Bypass
   OnlyIfCachedMiss
-} derive(Compare, Eq, @debug.Debug)
+}
+pub fn CacheActionKind::compare(Self, Self) -> Int32
+pub fn CacheActionKind::equal(Self, Self) -> Bool
 pub fn CacheActionKind::label(Self) -> String
+pub fn CacheActionKind::not_equal(Self, Self) -> Bool
+pub fn CacheActionKind::op_ge(Self, Self) -> Bool
+pub fn CacheActionKind::op_gt(Self, Self) -> Bool
+pub fn CacheActionKind::op_le(Self, Self) -> Bool
+pub fn CacheActionKind::op_lt(Self, Self) -> Bool
+pub fn CacheActionKind::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CacheControl {
   mut no_cache : Bool
   mut no_store : Bool
@@ -153,27 +183,39 @@ pub(all) struct CacheControl {
   mut stale_if_error : DeltaSeconds?
   mut stale_while_revalidate : DeltaSeconds?
   mut malformed_delta : Bool
-} derive(Eq, @debug.Debug)
+}
+pub fn CacheControl::equal(Self, Self) -> Bool
 pub fn CacheControl::new() -> Self
+pub fn CacheControl::not_equal(Self, Self) -> Bool
+pub fn CacheControl::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CacheDecision {
   action : CacheActionKind
   trace : CacheTrace
   storage : StorageDecision
-} derive(Eq, @debug.Debug)
+}
+pub fn CacheDecision::equal(Self, Self) -> Bool
+pub fn CacheDecision::not_equal(Self, Self) -> Bool
+pub fn CacheDecision::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CacheEvent {
   kind : CacheEventKind
   http_method : String
   uri : String
-  status : Int?
+  status : Int32?
   body_bytes : Int64
   count : Int64
   duration_milliseconds : Int64
   detail : String?
-} derive(Eq, @debug.Debug)
-pub fn CacheEvent::new(CacheEventKind, RequestMeta, status? : Int?, body_bytes? : Int64, count? : Int64, duration_milliseconds? : Int64, detail? : String?) -> Self
+}
+pub fn CacheEvent::equal(Self, Self) -> Bool
+pub fn CacheEvent::new(CacheEventKind, RequestMeta, status? : Int32?, body_bytes? : Int64, count? : Int64, duration_milliseconds? : Int64, detail? : String?) -> Self
+pub fn CacheEvent::not_equal(Self, Self) -> Bool
+pub fn CacheEvent::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum CacheEventKind {
   CacheRequestCompleted
   CacheHit
@@ -192,41 +234,67 @@ pub(all) enum CacheEventKind {
   CacheUpstreamRequestSaved
   CacheBackgroundRevalidation
   CacheBackgroundFailure
-} derive(Compare, Eq, @debug.Debug)
+}
+pub fn CacheEventKind::compare(Self, Self) -> Int32
+pub fn CacheEventKind::equal(Self, Self) -> Bool
 pub fn CacheEventKind::label(Self) -> String
+pub fn CacheEventKind::not_equal(Self, Self) -> Bool
+pub fn CacheEventKind::op_ge(Self, Self) -> Bool
+pub fn CacheEventKind::op_gt(Self, Self) -> Bool
+pub fn CacheEventKind::op_le(Self, Self) -> Bool
+pub fn CacheEventKind::op_lt(Self, Self) -> Bool
+pub fn CacheEventKind::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum CacheMode {
   Private
   Shared
-} derive(Compare, Eq, @debug.Debug)
+}
+pub fn CacheMode::compare(Self, Self) -> Int32
+pub fn CacheMode::equal(Self, Self) -> Bool
 pub fn CacheMode::from_string(String) -> Self?
 pub fn CacheMode::label(Self) -> String
+pub fn CacheMode::not_equal(Self, Self) -> Bool
+pub fn CacheMode::op_ge(Self, Self) -> Bool
+pub fn CacheMode::op_gt(Self, Self) -> Bool
+pub fn CacheMode::op_le(Self, Self) -> Bool
+pub fn CacheMode::op_lt(Self, Self) -> Bool
+pub fn CacheMode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CacheOptions {
   mode : CacheMode
   allow_heuristic_freshness : Bool
-  heuristic_fraction_per_mille : Int
+  heuristic_fraction_per_mille : Int32
   max_heuristic_lifetime : DeltaSeconds
   allow_shared_authorized : Bool
   cache_head_responses : Bool
   strip_sensitive_metadata : Bool
-} derive(Eq, @debug.Debug)
+}
+pub fn CacheOptions::equal(Self, Self) -> Bool
+pub fn CacheOptions::not_equal(Self, Self) -> Bool
 pub fn CacheOptions::private_cache() -> Self
 pub fn CacheOptions::shared_cache() -> Self
+pub fn CacheOptions::to_repr(Self) -> @debug.Repr
 pub fn CacheOptions::with_cache_head_responses(Self, Bool) -> Self
 pub fn CacheOptions::with_heuristic_freshness(Self, Bool) -> Self
-pub fn CacheOptions::with_heuristic_settings(Self, Int, DeltaSeconds) -> Self
+pub fn CacheOptions::with_heuristic_settings(Self, Int32, DeltaSeconds) -> Self
 pub fn CacheOptions::with_shared_authorized(Self, Bool) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CacheReason {
   code : CacheReasonCode
   detail : String?
   rfc : String?
-} derive(Eq, @debug.Debug)
+}
+pub fn CacheReason::equal(Self, Self) -> Bool
 pub fn CacheReason::new(CacheReasonCode) -> Self
+pub fn CacheReason::not_equal(Self, Self) -> Bool
+pub fn CacheReason::to_repr(Self) -> @debug.Repr
 pub fn CacheReason::with_detail(CacheReasonCode, String) -> Self
 pub fn CacheReason::with_rfc(CacheReasonCode, String) -> Self
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum CacheReasonCode {
   StoreAllowed
   StoreMethodUnsupported
@@ -291,27 +359,43 @@ pub(all) enum CacheReasonCode {
   InvalidateRelatedUri
   InvalidateSkippedSafeMethod
   InvalidateSkippedErrorStatus
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn CacheReasonCode::code(Self) -> String
+pub fn CacheReasonCode::compare(Self, Self) -> Int32
+pub fn CacheReasonCode::equal(Self, Self) -> Bool
 pub fn CacheReasonCode::message(Self) -> String
+pub fn CacheReasonCode::not_equal(Self, Self) -> Bool
+pub fn CacheReasonCode::op_ge(Self, Self) -> Bool
+pub fn CacheReasonCode::op_gt(Self, Self) -> Bool
+pub fn CacheReasonCode::op_le(Self, Self) -> Bool
+pub fn CacheReasonCode::op_lt(Self, Self) -> Bool
+pub fn CacheReasonCode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct CacheScenario {
   name : String
   mode : String
-  now : Int
+  now : Int32
   request : ScenarioRequest
   stored_response : ScenarioResponse?
   upstream_response : ScenarioResponse?
   expected : ScenarioExpected?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
+pub fn CacheScenario::equal(Self, Self) -> Bool
+pub fn CacheScenario::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CacheScenario::not_equal(Self, Self) -> Bool
+pub fn CacheScenario::to_json(Self) -> @json.Json
+pub fn CacheScenario::to_repr(Self) -> @debug.Repr
 
 pub struct CacheStats {
   // private fields
 }
 pub fn CacheStats::new() -> Self
+pub fn CacheStats::observe(Self, CacheEvent) -> Unit
 pub fn CacheStats::snapshot(Self) -> CacheStatsSnapshot
 pub impl CacheObserver for CacheStats
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CacheStatsSnapshot {
   requests : Int64
   hits : Int64
@@ -334,11 +418,14 @@ pub(all) struct CacheStatsSnapshot {
   average_validation_milliseconds : Int64
   background_revalidations : Int64
   background_failures : Int64
-} derive(Eq, @debug.Debug)
-pub fn CacheStatsSnapshot::hit_rate_per_mille(Self) -> Int
+}
+pub fn CacheStatsSnapshot::equal(Self, Self) -> Bool
+pub fn CacheStatsSnapshot::hit_rate_per_mille(Self) -> Int32
 pub fn CacheStatsSnapshot::json_report(Self) -> String
+pub fn CacheStatsSnapshot::not_equal(Self, Self) -> Bool
 pub fn CacheStatsSnapshot::text_report(Self) -> String
-pub fn CacheStatsSnapshot::to_json(Self) -> Json
+pub fn CacheStatsSnapshot::to_json(Self) -> @json.Json
+pub fn CacheStatsSnapshot::to_repr(Self) -> @debug.Repr
 pub fn CacheStatsSnapshot::with_coalesced_total(Self, Int64) -> Self
 
 pub struct CacheTelemetry {
@@ -349,12 +436,13 @@ pub fn CacheTelemetry::record_background_failure(Self, RuntimeRequest, String) -
 pub fn CacheTelemetry::record_background_revalidation(Self, RuntimeRequest) -> Unit
 pub fn CacheTelemetry::record_coalesced(Self, RuntimeRequest, RuntimeResponse) -> Unit
 pub fn CacheTelemetry::record_coalesced_operation(Self, RuntimeRequest) -> Unit
-pub fn CacheTelemetry::record_purge(Self, String, String, Int) -> Unit
+pub fn CacheTelemetry::record_purge(Self, String, String, Int32) -> Unit
 pub fn CacheTelemetry::record_response(Self, RuntimeRequest, RuntimeResponse, StoreStats, StoreStats) -> Unit
 pub fn CacheTelemetry::record_upstream_error(Self, RuntimeRequest, String, StoreStats, StoreStats) -> Unit
 pub fn CacheTelemetry::snapshot(Self) -> CacheStatsSnapshot
 pub fn[O : CacheObserver] CacheTelemetry::with_observer(Self, O) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CacheTrace {
   mut action : CacheActionKind
   reasons : Array[CacheReason]
@@ -365,14 +453,17 @@ pub(all) struct CacheTrace {
   mut selected_variant : String?
   mut validator : String?
   generated_headers : HeaderMap
-} derive(Eq, @debug.Debug)
+}
 pub fn CacheTrace::add_reason(Self, CacheReason) -> Unit
 pub fn CacheTrace::copy(Self) -> Self
+pub fn CacheTrace::equal(Self, Self) -> Bool
 pub fn CacheTrace::has_reason(Self, CacheReasonCode) -> Bool
 pub fn CacheTrace::json_report(Self) -> String
 pub fn CacheTrace::new(CacheActionKind) -> Self
+pub fn CacheTrace::not_equal(Self, Self) -> Bool
 pub fn CacheTrace::text_report(Self) -> String
-pub fn CacheTrace::to_json(Self) -> Json
+pub fn CacheTrace::to_json(Self) -> @json.Json
+pub fn CacheTrace::to_repr(Self) -> @debug.Repr
 
 pub struct CachedRuntime[S, T] {
   // private fields
@@ -380,73 +471,105 @@ pub struct CachedRuntime[S, T] {
 pub fn[S : CacheStore, T] CachedRuntime::clear(Self[S, T]) -> Unit
 pub fn[S : CacheStore, T : Transport] CachedRuntime::execute(Self[S, T], RuntimeRequest, Timestamp) -> RuntimeResponse raise RuntimeError
 pub fn[S, T] CachedRuntime::new(S, T, CacheOptions) -> Self[S, T]
-pub fn[S : CacheStore, T] CachedRuntime::purge(Self[S, T], String) -> Int
+pub fn[S : CacheStore, T] CachedRuntime::purge(Self[S, T], String) -> Int32
 pub fn[S, T] CachedRuntime::stats_snapshot(Self[S, T]) -> CacheStatsSnapshot
 pub fn[S : CacheStore, T] CachedRuntime::store_stats(Self[S, T]) -> StoreStats
 pub fn[S, T, O : CacheObserver] CachedRuntime::with_observer(Self[S, T], O) -> Self[S, T]
 
-pub struct DeltaSeconds(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)
+#derive(Compare, Eq, @debug.Debug, @json.FromJson, @json.ToJson)
+pub struct DeltaSeconds(Int64)
+pub fn DeltaSeconds::compare(Self, Self) -> Int32
+pub fn DeltaSeconds::equal(Self, Self) -> Bool
+pub fn DeltaSeconds::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn DeltaSeconds::from_seconds(Int64) -> Self
 pub fn DeltaSeconds::max(Self, Self) -> Self
 pub fn DeltaSeconds::max_value() -> Self
 pub fn DeltaSeconds::min(Self, Self) -> Self
+pub fn DeltaSeconds::not_equal(Self, Self) -> Bool
+pub fn DeltaSeconds::op_ge(Self, Self) -> Bool
+pub fn DeltaSeconds::op_gt(Self, Self) -> Bool
+pub fn DeltaSeconds::op_le(Self, Self) -> Bool
+pub fn DeltaSeconds::op_lt(Self, Self) -> Bool
 pub fn DeltaSeconds::saturating_add(Self, Self) -> Self
 pub fn DeltaSeconds::saturating_scale(Self, Int64, Int64) -> Self
 pub fn DeltaSeconds::saturating_sub(Self, Self) -> Self
 pub fn DeltaSeconds::seconds(Self) -> Int64
+pub fn DeltaSeconds::to_json(Self) -> @json.Json
+pub fn DeltaSeconds::to_repr(Self) -> @debug.Repr
 pub fn DeltaSeconds::zero() -> Self
 
 pub struct FakeTransport {
   // private fields
 }
-pub fn FakeTransport::call_count(Self) -> Int
+pub fn FakeTransport::call_count(Self) -> Int32
 pub fn FakeTransport::execute(Self, RuntimeRequest) -> TransportResponse raise TransportError
 pub fn FakeTransport::new(Array[TransportResponse]) -> Self
 pub fn FakeTransport::with_outcomes(Array[TransportOutcome]) -> Self
 pub impl Transport for FakeTransport
 
+#derive(Eq, @debug.Debug)
 pub(all) struct FreshnessCalculation {
   lifetime : DeltaSeconds
   source : FreshnessSource
   date_value : Timestamp
   expires_value : Timestamp?
   last_modified_value : Timestamp?
-} derive(Eq, @debug.Debug)
+}
+pub fn FreshnessCalculation::equal(Self, Self) -> Bool
+pub fn FreshnessCalculation::not_equal(Self, Self) -> Bool
+pub fn FreshnessCalculation::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum FreshnessSource {
   SharedMaxAge
   MaxAge
   Expires
   HeuristicLastModified
   NoFreshness
-} derive(Compare, Eq, @debug.Debug)
+}
+pub fn FreshnessSource::compare(Self, Self) -> Int32
+pub fn FreshnessSource::equal(Self, Self) -> Bool
 pub fn FreshnessSource::label(Self) -> String
+pub fn FreshnessSource::not_equal(Self, Self) -> Bool
+pub fn FreshnessSource::op_ge(Self, Self) -> Bool
+pub fn FreshnessSource::op_gt(Self, Self) -> Bool
+pub fn FreshnessSource::op_le(Self, Self) -> Bool
+pub fn FreshnessSource::op_lt(Self, Self) -> Bool
 pub fn FreshnessSource::reason(Self) -> CacheReasonCode
+pub fn FreshnessSource::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct HeaderMap {
   values : Map[String, Array[String]]
-} derive(Eq, @debug.Debug)
+}
 pub fn HeaderMap::append(Self, String, String) -> Bool
 pub fn HeaderMap::contains(Self, String) -> Bool
 pub fn HeaderMap::copy(Self) -> Self
+pub fn HeaderMap::equal(Self, Self) -> Bool
 pub fn HeaderMap::from_pairs(Array[(String, String)]) -> Self
 pub fn HeaderMap::get(Self, String) -> String?
 pub fn HeaderMap::get_all(Self, String) -> Array[String]
 pub fn HeaderMap::get_first(Self, String) -> String?
 pub fn HeaderMap::is_empty(Self) -> Bool
-pub fn HeaderMap::length(Self) -> Int
+pub fn HeaderMap::length(Self) -> Int32
 pub fn HeaderMap::names(Self) -> Array[String]
 pub fn HeaderMap::new() -> Self
+pub fn HeaderMap::not_equal(Self, Self) -> Bool
 pub fn HeaderMap::overlay(Self, Self) -> Self
 pub fn HeaderMap::pairs(Self) -> Array[(String, String)]
 pub fn HeaderMap::redacted(Self) -> Self
 pub fn HeaderMap::remove(Self, String) -> Bool
 pub fn HeaderMap::set(Self, String, String) -> Bool
+pub fn HeaderMap::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct InvalidationPlan {
   uris : Array[String]
   reasons : Array[CacheReason]
-} derive(Eq, @debug.Debug)
+}
+pub fn InvalidationPlan::equal(Self, Self) -> Bool
+pub fn InvalidationPlan::not_equal(Self, Self) -> Bool
+pub fn InvalidationPlan::to_repr(Self) -> @debug.Repr
 
 pub struct MemoryStore {
   // private fields
@@ -456,66 +579,90 @@ pub fn MemoryStore::clear(Self) -> Unit
 pub fn MemoryStore::contains_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
 pub fn MemoryStore::default() -> Self
 pub fn MemoryStore::find_variants(Self, PrimaryCacheKey) -> Array[StoredEntry]
-pub fn MemoryStore::invalidate_uri(Self, String) -> Int
+pub fn MemoryStore::invalidate_uri(Self, String) -> Int32
 pub fn MemoryStore::new(MemoryStoreOptions) -> Self
 pub fn MemoryStore::options(Self) -> MemoryStoreOptions
 pub fn MemoryStore::peek_variants(Self, String) -> Array[StoredEntry]
 pub fn MemoryStore::put(Self, StoredEntry) -> StorePutResult
 pub fn MemoryStore::remove_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
 pub fn MemoryStore::stats(Self) -> StoreStats
-pub fn MemoryStore::variant_count(Self, String) -> Int
+pub fn MemoryStore::variant_count(Self, String) -> Int32
 pub impl CacheStore for MemoryStore
 
+#derive(Eq, @debug.Debug)
 pub(all) struct MemoryStoreOptions {
-  max_entries : Int
+  max_entries : Int32
   max_body_bytes : Int64
   max_body_size : Int64
   strip_set_cookie : Bool
   strip_request_credentials : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn MemoryStoreOptions::default() -> Self
-pub fn MemoryStoreOptions::with_entry_limit(Self, Int) -> Self
-pub fn MemoryStoreOptions::with_limits(Int, Int64, Int64) -> Self
+pub fn MemoryStoreOptions::equal(Self, Self) -> Bool
+pub fn MemoryStoreOptions::not_equal(Self, Self) -> Bool
+pub fn MemoryStoreOptions::to_repr(Self) -> @debug.Repr
+pub fn MemoryStoreOptions::with_entry_limit(Self, Int32) -> Self
+pub fn MemoryStoreOptions::with_limits(Int32, Int64, Int64) -> Self
 pub fn MemoryStoreOptions::with_request_credential_stripping(Self, Bool) -> Self
 pub fn MemoryStoreOptions::with_set_cookie_stripping(Self, Bool) -> Self
 pub fn MemoryStoreOptions::with_single_body_limit(Self, Int64) -> Self
 pub fn MemoryStoreOptions::with_total_body_limit(Self, Int64) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) struct NotModifiedResult {
   entry : StoredEntry
   storage : StorageDecision
   reasons : Array[CacheReason]
-} derive(Eq, @debug.Debug)
+}
+pub fn NotModifiedResult::equal(Self, Self) -> Bool
+pub fn NotModifiedResult::not_equal(Self, Self) -> Bool
+pub fn NotModifiedResult::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, Hash, @debug.Debug)
 pub(all) struct PrimaryCacheKey {
   http_method : String
   uri : String
-} derive(Compare, Eq, Hash, @debug.Debug)
+}
+pub fn PrimaryCacheKey::compare(Self, Self) -> Int32
+pub fn PrimaryCacheKey::equal(Self, Self) -> Bool
 pub fn PrimaryCacheKey::from_request(RequestMeta) -> Self?
+pub fn PrimaryCacheKey::hash(Self) -> Int32
+pub fn PrimaryCacheKey::hash_combine(Self, Hasher) -> Unit
 pub fn PrimaryCacheKey::label(Self) -> String
 pub fn PrimaryCacheKey::new(String, String) -> Self
+pub fn PrimaryCacheKey::not_equal(Self, Self) -> Bool
+pub fn PrimaryCacheKey::op_ge(Self, Self) -> Bool
+pub fn PrimaryCacheKey::op_gt(Self, Self) -> Bool
+pub fn PrimaryCacheKey::op_le(Self, Self) -> Bool
+pub fn PrimaryCacheKey::op_lt(Self, Self) -> Bool
+pub fn PrimaryCacheKey::to_repr(Self) -> @debug.Repr
 
 pub struct RecordingTransport {
   // private fields
 }
-pub fn RecordingTransport::call_count(Self) -> Int
+pub fn RecordingTransport::call_count(Self) -> Int32
 pub fn RecordingTransport::calls(Self) -> Array[RuntimeRequest]
 pub fn RecordingTransport::execute(Self, RuntimeRequest) -> TransportResponse raise TransportError
 pub fn RecordingTransport::new(Array[TransportResponse]) -> Self
 pub fn RecordingTransport::with_outcomes(Array[TransportOutcome]) -> Self
 pub impl Transport for RecordingTransport
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RequestMeta {
   http_method : String
   uri : String
   headers : HeaderMap
   request_time : Timestamp
-} derive(Eq, @debug.Debug)
+}
+pub fn RequestMeta::equal(Self, Self) -> Bool
 pub fn RequestMeta::new(String, String, HeaderMap, Timestamp) -> Self
+pub fn RequestMeta::not_equal(Self, Self) -> Bool
 pub fn RequestMeta::simple(String, String) -> Self
+pub fn RequestMeta::to_repr(Self) -> @debug.Repr
 pub fn RequestMeta::with_headers(Self, HeaderMap) -> Self
 pub fn RequestMeta::with_request_time(Self, Timestamp) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RequestPolicy {
   bypass : Bool
   force_revalidation : Bool
@@ -524,91 +671,142 @@ pub(all) struct RequestPolicy {
   min_fresh : DeltaSeconds
   max_stale : DeltaSeconds?
   max_stale_unbounded : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn RequestPolicy::allows_stale(Self, DeltaSeconds) -> Bool
+pub fn RequestPolicy::equal(Self, Self) -> Bool
+pub fn RequestPolicy::not_equal(Self, Self) -> Bool
+pub fn RequestPolicy::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ResponseMeta {
-  status : Int
+  status : Int32
   headers : HeaderMap
   request_time : Timestamp
   response_time : Timestamp
   body_complete : Bool
-} derive(Eq, @debug.Debug)
-pub fn ResponseMeta::complete(Int, HeaderMap, Timestamp, Timestamp) -> Self
-pub fn ResponseMeta::new(Int, HeaderMap, Timestamp, Timestamp, Bool) -> Self
+}
+pub fn ResponseMeta::complete(Int32, HeaderMap, Timestamp, Timestamp) -> Self
+pub fn ResponseMeta::equal(Self, Self) -> Bool
+pub fn ResponseMeta::new(Int32, HeaderMap, Timestamp, Timestamp, Bool) -> Self
+pub fn ResponseMeta::not_equal(Self, Self) -> Bool
+pub fn ResponseMeta::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum ResponseSource {
   CacheSource
   UpstreamSource
   RevalidatedSource
   StaleSource
   OnlyIfCachedSource
-} derive(Compare, Eq, @debug.Debug)
+}
+pub fn ResponseSource::compare(Self, Self) -> Int32
+pub fn ResponseSource::equal(Self, Self) -> Bool
 pub fn ResponseSource::label(Self) -> String
+pub fn ResponseSource::not_equal(Self, Self) -> Bool
+pub fn ResponseSource::op_ge(Self, Self) -> Bool
+pub fn ResponseSource::op_gt(Self, Self) -> Bool
+pub fn ResponseSource::op_le(Self, Self) -> Bool
+pub fn ResponseSource::op_lt(Self, Self) -> Bool
+pub fn ResponseSource::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RevalidationPlan {
   request : RequestMeta
   generated_headers : HeaderMap
   validator_kind : ValidatorKind?
   reasons : Array[CacheReason]
-} derive(Eq, @debug.Debug)
+}
 pub fn RevalidationPlan::can_revalidate(Self) -> Bool
+pub fn RevalidationPlan::equal(Self, Self) -> Bool
+pub fn RevalidationPlan::not_equal(Self, Self) -> Bool
+pub fn RevalidationPlan::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RuntimeRequest {
   meta : RequestMeta
   body : Bytes
-} derive(Eq, @debug.Debug)
+}
 pub fn RuntimeRequest::copy(Self) -> Self
+pub fn RuntimeRequest::equal(Self, Self) -> Bool
 pub fn RuntimeRequest::get(String) -> Self
 pub fn RuntimeRequest::head(String) -> Self
 pub fn RuntimeRequest::new(RequestMeta, Bytes) -> Self
+pub fn RuntimeRequest::not_equal(Self, Self) -> Bool
+pub fn RuntimeRequest::to_repr(Self) -> @debug.Repr
 pub fn RuntimeRequest::with_body(Self, Bytes) -> Self
 pub fn RuntimeRequest::with_headers(Self, HeaderMap) -> Self
 pub fn RuntimeRequest::with_request_time(Self, Timestamp) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RuntimeResponse {
   meta : ResponseMeta
   body : Bytes
   source : ResponseSource
   trace : CacheTrace
-} derive(Eq, @debug.Debug)
+}
 pub fn RuntimeResponse::copy(Self) -> Self
+pub fn RuntimeResponse::equal(Self, Self) -> Bool
 pub fn RuntimeResponse::is_cache_reuse(Self) -> Bool
 pub fn RuntimeResponse::json_report(Self) -> String
+pub fn RuntimeResponse::not_equal(Self, Self) -> Bool
 pub fn RuntimeResponse::text_report(Self) -> String
-pub fn RuntimeResponse::to_json(Self) -> Json
+pub fn RuntimeResponse::to_json(Self) -> @json.Json
+pub fn RuntimeResponse::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ScenarioAnalysis {
   name : String
   trace : CacheTrace
   valid : Bool
   errors : Array[String]
-} derive(Eq, @debug.Debug)
+}
+pub fn ScenarioAnalysis::equal(Self, Self) -> Bool
+pub fn ScenarioAnalysis::not_equal(Self, Self) -> Bool
+pub fn ScenarioAnalysis::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ScenarioExpected {
   action : String
   reason : String?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
+pub fn ScenarioExpected::equal(Self, Self) -> Bool
+pub fn ScenarioExpected::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ScenarioExpected::not_equal(Self, Self) -> Bool
+pub fn ScenarioExpected::to_json(Self) -> @json.Json
+pub fn ScenarioExpected::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ScenarioRequest {
   http_method : String
   uri : String
   headers : Map[String, String]
-  request_time : Int?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+  request_time : Int32?
+}
+pub fn ScenarioRequest::equal(Self, Self) -> Bool
+pub fn ScenarioRequest::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ScenarioRequest::not_equal(Self, Self) -> Bool
+pub fn ScenarioRequest::to_json(Self) -> @json.Json
 pub fn ScenarioRequest::to_meta(Self) -> RequestMeta
+pub fn ScenarioRequest::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ScenarioResponse {
-  status : Int
+  status : Int32
   headers : Map[String, String]
-  request_time : Int?
-  response_time : Int?
+  request_time : Int32?
+  response_time : Int32?
   body : String?
   complete : Bool?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn ScenarioResponse::body_bytes(Self) -> Bytes
+pub fn ScenarioResponse::equal(Self, Self) -> Bool
+pub fn ScenarioResponse::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ScenarioResponse::not_equal(Self, Self) -> Bool
+pub fn ScenarioResponse::to_json(Self) -> @json.Json
 pub fn ScenarioResponse::to_meta(Self, Timestamp) -> ResponseMeta
+pub fn ScenarioResponse::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct StalePolicy {
   is_stale : Bool
   stale_by : DeltaSeconds
@@ -617,26 +815,43 @@ pub(all) struct StalePolicy {
   stale_if_error_allowed : Bool
   stale_while_revalidate_allowed : Bool
   prohibited : Bool
-} derive(Eq, @debug.Debug)
+}
+pub fn StalePolicy::equal(Self, Self) -> Bool
+pub fn StalePolicy::not_equal(Self, Self) -> Bool
+pub fn StalePolicy::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct StorageDecision {
   storable : Bool
   policy : StoredPolicy
   reasons : Array[CacheReason]
-} derive(Eq, @debug.Debug)
+}
+pub fn StorageDecision::equal(Self, Self) -> Bool
+pub fn StorageDecision::not_equal(Self, Self) -> Bool
+pub fn StorageDecision::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum StorePutResult {
   StoreInserted
   StoreReplacedResult
   StoreRejectedNoStore
   StoreRejectedOversized
   StoreRejectedCapacity
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn StorePutResult::accepted(Self) -> Bool
+pub fn StorePutResult::compare(Self, Self) -> Int32
+pub fn StorePutResult::equal(Self, Self) -> Bool
 pub fn StorePutResult::label(Self) -> String
+pub fn StorePutResult::not_equal(Self, Self) -> Bool
+pub fn StorePutResult::op_ge(Self, Self) -> Bool
+pub fn StorePutResult::op_gt(Self, Self) -> Bool
+pub fn StorePutResult::op_le(Self, Self) -> Bool
+pub fn StorePutResult::op_lt(Self, Self) -> Bool
+pub fn StorePutResult::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct StoreStats {
-  entries : Int
+  entries : Int32
   body_bytes : Int64
   puts : Int64
   replacements : Int64
@@ -646,15 +861,19 @@ pub(all) struct StoreStats {
   misses : Int64
   invalidated_entries : Int64
   rejected_entries : Int64
-} derive(Eq, @debug.Debug)
-pub fn StoreStats::hit_rate_per_mille(Self) -> Int
+}
+pub fn StoreStats::equal(Self, Self) -> Bool
+pub fn StoreStats::hit_rate_per_mille(Self) -> Int32
 pub fn StoreStats::is_empty(Self) -> Bool
 pub fn StoreStats::json_report(Self) -> String
+pub fn StoreStats::not_equal(Self, Self) -> Bool
 pub fn StoreStats::requests(Self) -> Int64
 pub fn StoreStats::saved_origin_requests(Self) -> Int64
 pub fn StoreStats::text_report(Self) -> String
-pub fn StoreStats::to_json(Self) -> Json
+pub fn StoreStats::to_json(Self) -> @json.Json
+pub fn StoreStats::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct StoredEntry {
   primary_key : PrimaryCacheKey
   variant_key : VariantKey
@@ -664,12 +883,16 @@ pub(all) struct StoredEntry {
   policy : StoredPolicy
   stored_at : Timestamp
   last_accessed_at : Timestamp
-} derive(Eq, @debug.Debug)
+}
 pub fn StoredEntry::body_size(Self) -> Int64
 pub fn StoredEntry::copy(Self) -> Self
+pub fn StoredEntry::equal(Self, Self) -> Bool
 pub fn StoredEntry::new(PrimaryCacheKey, VariantKey, RequestMeta, ResponseMeta, Bytes, StoredPolicy, Timestamp) -> Self
+pub fn StoredEntry::not_equal(Self, Self) -> Bool
+pub fn StoredEntry::to_repr(Self) -> @debug.Repr
 pub fn StoredEntry::touch(Self, Timestamp) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) struct StoredPolicy {
   cacheable : Bool
   freshness_lifetime : DeltaSeconds
@@ -680,30 +903,53 @@ pub(all) struct StoredPolicy {
   proxy_revalidate : Bool
   is_private : Bool
   is_public : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn StoredPolicy::cacheable(DeltaSeconds, Bool) -> Self
+pub fn StoredPolicy::equal(Self, Self) -> Bool
 pub fn StoredPolicy::from_directives(DeltaSeconds, CacheControl, Bool) -> Self
+pub fn StoredPolicy::not_equal(Self, Self) -> Bool
+pub fn StoredPolicy::to_repr(Self) -> @debug.Repr
 pub fn StoredPolicy::uncacheable() -> Self
 
-pub struct Timestamp(Int64) derive(Compare, Eq, ToJson, @debug.Debug, @json.FromJson)
+#derive(Compare, Eq, @debug.Debug, @json.FromJson, @json.ToJson)
+pub struct Timestamp(Int64)
+pub fn Timestamp::compare(Self, Self) -> Int32
 pub fn Timestamp::elapsed_since(Self, Self) -> DeltaSeconds
+pub fn Timestamp::equal(Self, Self) -> Bool
+pub fn Timestamp::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn Timestamp::from_seconds(Int64) -> Self
+pub fn Timestamp::not_equal(Self, Self) -> Bool
+pub fn Timestamp::op_ge(Self, Self) -> Bool
+pub fn Timestamp::op_gt(Self, Self) -> Bool
+pub fn Timestamp::op_le(Self, Self) -> Bool
+pub fn Timestamp::op_lt(Self, Self) -> Bool
 pub fn Timestamp::saturating_add(Self, DeltaSeconds) -> Self
 pub fn Timestamp::seconds(Self) -> Int64
+pub fn Timestamp::to_json(Self) -> @json.Json
+pub fn Timestamp::to_repr(Self) -> @debug.Repr
 pub fn Timestamp::zero() -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum TransportOutcome {
   TransportSuccess(TransportResponse)
   TransportFailure(String)
-} derive(Eq, @debug.Debug)
+}
+pub fn TransportOutcome::equal(Self, Self) -> Bool
+pub fn TransportOutcome::not_equal(Self, Self) -> Bool
+pub fn TransportOutcome::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct TransportResponse {
   meta : ResponseMeta
   body : Bytes
-} derive(Eq, @debug.Debug)
+}
 pub fn TransportResponse::copy(Self) -> Self
+pub fn TransportResponse::equal(Self, Self) -> Bool
 pub fn TransportResponse::new(ResponseMeta, Bytes) -> Self
+pub fn TransportResponse::not_equal(Self, Self) -> Bool
+pub fn TransportResponse::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum ValidatorKind {
   StrongEtag
   WeakEtag
@@ -711,42 +957,82 @@ pub(all) enum ValidatorKind {
   StrongEtagAndLastModified
   WeakEtagAndLastModified
   CallerConditions
-} derive(Compare, Eq, @debug.Debug)
+}
+pub fn ValidatorKind::compare(Self, Self) -> Int32
+pub fn ValidatorKind::equal(Self, Self) -> Bool
 pub fn ValidatorKind::label(Self) -> String
+pub fn ValidatorKind::not_equal(Self, Self) -> Bool
+pub fn ValidatorKind::op_ge(Self, Self) -> Bool
+pub fn ValidatorKind::op_gt(Self, Self) -> Bool
+pub fn ValidatorKind::op_le(Self, Self) -> Bool
+pub fn ValidatorKind::op_lt(Self, Self) -> Bool
+pub fn ValidatorKind::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, Hash, @debug.Debug)
 pub(all) struct VariantKey {
   canonical : String
   label : String
-} derive(Compare, Eq, Hash, @debug.Debug)
+}
+pub fn VariantKey::compare(Self, Self) -> Int32
 pub fn VariantKey::empty() -> Self
+pub fn VariantKey::equal(Self, Self) -> Bool
 pub fn VariantKey::from_canonical(String, String) -> Self
+pub fn VariantKey::hash(Self) -> Int32
+pub fn VariantKey::hash_combine(Self, Hasher) -> Unit
+pub fn VariantKey::not_equal(Self, Self) -> Bool
+pub fn VariantKey::op_ge(Self, Self) -> Bool
+pub fn VariantKey::op_gt(Self, Self) -> Bool
+pub fn VariantKey::op_le(Self, Self) -> Bool
+pub fn VariantKey::op_lt(Self, Self) -> Bool
+pub fn VariantKey::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VariantSelection {
   entry : StoredEntry?
-  inspected : Int
+  inspected : Int32
   variant_key : VariantKey?
   reasons : Array[CacheReason]
-} derive(Eq, @debug.Debug)
+}
+pub fn VariantSelection::equal(Self, Self) -> Bool
+pub fn VariantSelection::not_equal(Self, Self) -> Bool
+pub fn VariantSelection::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VaryMatch {
   kind : VaryMatchKind
   differing_field : String?
   stored_key : VariantKey?
   candidate_key : VariantKey?
   reason : CacheReason
-} derive(Eq, @debug.Debug)
+}
+pub fn VaryMatch::equal(Self, Self) -> Bool
+pub fn VaryMatch::not_equal(Self, Self) -> Bool
+pub fn VaryMatch::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum VaryMatchKind {
   VaryMatchedResult
   VaryMismatchResult
   VaryStarResult
-} derive(Compare, Eq, @debug.Debug)
+}
+pub fn VaryMatchKind::compare(Self, Self) -> Int32
+pub fn VaryMatchKind::equal(Self, Self) -> Bool
+pub fn VaryMatchKind::not_equal(Self, Self) -> Bool
+pub fn VaryMatchKind::op_ge(Self, Self) -> Bool
+pub fn VaryMatchKind::op_gt(Self, Self) -> Bool
+pub fn VaryMatchKind::op_le(Self, Self) -> Bool
+pub fn VaryMatchKind::op_lt(Self, Self) -> Bool
+pub fn VaryMatchKind::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VarySpec {
   fields : Array[String]
   star : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn VarySpec::default() -> Self
+pub fn VarySpec::equal(Self, Self) -> Bool
+pub fn VarySpec::not_equal(Self, Self) -> Bool
+pub fn VarySpec::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 
@@ -759,7 +1045,7 @@ pub(open) trait CacheStore {
   fn find_variants(Self, PrimaryCacheKey) -> Array[StoredEntry]
   fn put(Self, StoredEntry) -> StorePutResult
   fn remove_variant(Self, PrimaryCacheKey, VariantKey) -> Bool
-  fn invalidate_uri(Self, String) -> Int
+  fn invalidate_uri(Self, String) -> Int32
   fn clear(Self) -> Unit
   fn stats(Self) -> StoreStats
 }

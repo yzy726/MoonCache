@@ -1,12 +1,13 @@
 ///|
 /// Errors raised by checked FileStore operations.
+#derive(Eq, Debug)
 pub suberror FileStoreError {
   FileStoreIo(String)
   FileStoreCorrupt(String)
-  FileStoreUnsupportedVersion(Int)
-  FileStoreMetadataTooLarge(actual~ : Int, maximum~ : Int)
-  FileStoreHeadersTooLarge(actual~ : Int, maximum~ : Int)
-} derive(Eq, Debug)
+  FileStoreUnsupportedVersion(Int32)
+  FileStoreMetadataTooLarge(actual~ : Int32, maximum~ : Int32)
+  FileStoreHeadersTooLarge(actual~ : Int32, maximum~ : Int32)
+}
 
 ///|
 pub fn FileStoreError::message(self : FileStoreError) -> String {
@@ -23,15 +24,16 @@ pub fn FileStoreError::message(self : FileStoreError) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FileStoreOptions {
   memory_options : @mooncache.MemoryStoreOptions
-  max_metadata_bytes : Int
-  max_header_bytes : Int
-} derive(Eq, Debug)
+  max_metadata_bytes : Int32
+  max_header_bytes : Int32
+}
 
 ///|
 pub fn FileStoreOptions::default() -> FileStoreOptions {
-  FileStoreOptions::{
+  {
     memory_options: @mooncache.MemoryStoreOptions::default(),
     max_metadata_bytes: 256 * 1024,
     max_header_bytes: 128 * 1024,
@@ -43,12 +45,12 @@ pub fn FileStoreOptions::with_memory_options(
   self : FileStoreOptions,
   memory_options : @mooncache.MemoryStoreOptions,
 ) -> FileStoreOptions {
-  FileStoreOptions::{ ..self, memory_options, }
+  { ..self, memory_options, }
 }
 
 ///|
 pub fn FileStoreOptions::with_limits(
-  max_entries : Int,
+  max_entries : Int32,
   max_body_bytes : Int64,
   max_body_size : Int64,
 ) -> FileStoreOptions {
@@ -62,48 +64,35 @@ pub fn FileStoreOptions::with_limits(
 ///|
 pub fn FileStoreOptions::with_metadata_limit(
   self : FileStoreOptions,
-  maximum : Int,
+  maximum : Int32,
 ) -> FileStoreOptions {
-  FileStoreOptions::{
-    ..self,
-    max_metadata_bytes: if maximum < 0 {
-      0
-    } else {
-      maximum
-    },
-  }
+  { ..self, max_metadata_bytes: if maximum < 0 { 0 } else { maximum }, }
 }
 
 ///|
 pub fn FileStoreOptions::with_header_limit(
   self : FileStoreOptions,
-  maximum : Int,
+  maximum : Int32,
 ) -> FileStoreOptions {
-  FileStoreOptions::{
-    ..self,
-    max_header_bytes: if maximum < 0 {
-      0
-    } else {
-      maximum
-    },
-  }
+  { ..self, max_header_bytes: if maximum < 0 { 0 } else { maximum }, }
 }
 
 ///|
 /// Summary of work performed while opening and recovering a durable store.
+#derive(Eq, Debug)
 pub(all) struct FileStoreRecoveryReport {
-  loaded_entries : Int
-  quarantined_entries : Int
-  dropped_entries : Int
-  temp_files_removed : Int
-  orphan_files_removed : Int
-  indexes_rebuilt : Int
+  loaded_entries : Int32
+  quarantined_entries : Int32
+  dropped_entries : Int32
+  temp_files_removed : Int32
+  orphan_files_removed : Int32
+  indexes_rebuilt : Int32
   manifest_rebuilt : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 fn FileStoreRecoveryReport::empty() -> FileStoreRecoveryReport {
-  FileStoreRecoveryReport::{
+  {
     loaded_entries: 0,
     quarantined_entries: 0,
     dropped_entries: 0,
@@ -139,7 +128,7 @@ fn FileStorePaths::new(root : String) -> FileStorePaths raise FileStoreError {
   guard root.trim() != "" && !root.contains("\u0000") else {
     raise FileStoreIo("cache root path is empty or contains NUL")
   }
-  FileStorePaths::{
+  {
     root,
     index: join_store_path(root, "index"),
     metadata: join_store_path(root, "metadata"),
@@ -190,7 +179,8 @@ fn is_safe_child_name(name : String) -> Bool {
 ///|
 fn read_store_bytes(path : String) -> Bytes raise FileStoreError {
   @fs.read_file_to_bytes(path) catch {
-    error => raise FileStoreIo("\{path}: \{error.to_repr().to_string()}")
+    error =>
+      raise FileStoreIo("\{path}: \{@debug.Debug::to_repr(error).to_string()}")
   }
 }
 
@@ -203,15 +193,17 @@ fn read_store_text(path : String) -> String raise FileStoreError {
 
 ///|
 fn read_store_directory(path : String) -> Array[String] raise FileStoreError {
-  @fs.read_dir(path) catch {
-    error => raise FileStoreIo("\{path}: \{error.to_repr().to_string()}")
+  @fs.read_dir(path).to_owned() catch {
+    error =>
+      raise FileStoreIo("\{path}: \{@debug.Debug::to_repr(error).to_string()}")
   }
 }
 
 ///|
 fn store_path_is_file(path : String) -> Bool raise FileStoreError {
   @fs.is_file(path) catch {
-    error => raise FileStoreIo("\{path}: \{error.to_repr().to_string()}")
+    error =>
+      raise FileStoreIo("\{path}: \{@debug.Debug::to_repr(error).to_string()}")
   }
 }
 
@@ -219,13 +211,16 @@ fn store_path_is_file(path : String) -> Bool raise FileStoreError {
 fn remove_store_file(path : String) -> Unit raise FileStoreError {
   if @fs.path_exists(path) {
     @fs.remove_file(path) catch {
-      error => raise FileStoreIo("\{path}: \{error.to_repr().to_string()}")
+      error =>
+        raise FileStoreIo(
+          "\{path}: \{@debug.Debug::to_repr(error).to_string()}",
+        )
     }
   }
 }
 
 ///|
-fn utf8_size(text : String) -> Int {
+fn utf8_size(text : String) -> Int32 {
   native_text(text).length()
 }
 
@@ -235,7 +230,7 @@ fn write_text_if_changed(
   path : String,
   prefix : String,
   text : String,
-  maximum : Int,
+  maximum : Int32,
 ) -> Unit raise FileStoreError {
   let encoded = native_text(text)
   guard encoded.length() <= maximum else {
@@ -275,7 +270,7 @@ fn write_body_if_needed(
 fn cleanup_directory(
   directory : String,
   keep : Array[String],
-) -> Int raise FileStoreError {
+) -> Int32 raise FileStoreError {
   let mut removed = 0
   for name in read_store_directory(directory) {
     if is_safe_child_name(name) && !keep.contains(name) {
@@ -290,7 +285,7 @@ fn cleanup_directory(
 }
 
 ///|
-fn compare_string(left : String, right : String) -> Int {
+fn compare_string(left : String, right : String) -> Int32 {
   if left < right {
     -1
   } else if left > right {
@@ -304,7 +299,7 @@ fn compare_string(left : String, right : String) -> Int {
 fn compare_entry_id(
   left : @mooncache.StoredEntry,
   right : @mooncache.StoredEntry,
-) -> Int {
+) -> Int32 {
   compare_string(entry_file_id(left), entry_file_id(right))
 }
 
@@ -332,7 +327,7 @@ fn collect_indexes(
       }
     }
     if !found {
-      indexes.push(IndexAccumulator::{
+      indexes.push({
         index_id,
         primary_key: entry.primary_key,
         entry_ids: [entry_id],
@@ -417,7 +412,7 @@ fn FileStore::quarantine_file(
 }
 
 ///|
-fn FileStore::persist_snapshot(self : FileStore) -> Int raise FileStoreError {
+fn FileStore::persist_snapshot(self : FileStore) -> Int32 raise FileStoreError {
   let entries = self.snapshot_entries()
   let metadata_keep : Array[String] = []
   let body_keep : Array[String] = []
@@ -672,15 +667,12 @@ fn FileStore::index_is_current(
 ///|
 fn FileStore::recover(self : FileStore) -> Unit raise FileStoreError {
   let mut report = FileStoreRecoveryReport::empty()
-  report = FileStoreRecoveryReport::{
+  report = {
     ..report,
     temp_files_removed: cleanup_directory(self.paths.temp, []),
   }
   let (manifest, rebuild_manifest) = self.load_manifest()
-  report = FileStoreRecoveryReport::{
-    ..report,
-    manifest_rebuilt: rebuild_manifest,
-  }
+  report = { ..report, manifest_rebuilt: rebuild_manifest, }
   let ids = match manifest {
     Some(value) => {
       self.generation = value.generation
@@ -726,7 +718,7 @@ fn FileStore::recover(self : FileStore) -> Unit raise FileStoreError {
     }
   }
   let orphans = self.persist_snapshot()
-  self.recovery = FileStoreRecoveryReport::{
+  self.recovery = {
     loaded_entries: loaded,
     quarantined_entries: quarantined,
     dropped_entries: dropped,
@@ -740,7 +732,7 @@ fn FileStore::recover(self : FileStore) -> Unit raise FileStoreError {
 ///|
 pub fn FileStore::open(
   root : String,
-  options? : FileStoreOptions = FileStoreOptions::default(),
+  options~ : FileStoreOptions = FileStoreOptions::default(),
 ) -> FileStore raise FileStoreError {
   let paths = FileStorePaths::new(root)
   paths.ensure_layout()
@@ -799,7 +791,7 @@ pub fn FileStore::peek_variants(
 }
 
 ///|
-pub fn FileStore::variant_count(self : FileStore, uri : String) -> Int {
+pub fn FileStore::variant_count(self : FileStore, uri : String) -> Int32 {
   self.memory.variant_count(uri)
 }
 
@@ -915,7 +907,7 @@ pub fn FileStore::remove_variant(
 pub fn FileStore::invalidate_uri_checked(
   self : FileStore,
   uri : String,
-) -> Int raise FileStoreError {
+) -> Int32 raise FileStoreError {
   let before = self.snapshot_entries()
   let removed = self.memory.invalidate_uri(uri)
   if removed == 0 {
@@ -934,7 +926,7 @@ pub fn FileStore::invalidate_uri_checked(
 }
 
 ///|
-pub fn FileStore::invalidate_uri(self : FileStore, uri : String) -> Int {
+pub fn FileStore::invalidate_uri(self : FileStore, uri : String) -> Int32 {
   self.invalidate_uri_checked(uri) catch {
     _ => 0
   }
@@ -966,7 +958,7 @@ pub fn FileStore::clear(self : FileStore) -> Unit {
 ///|
 /// Rewrite indexes and the manifest, then remove unreferenced bodies,
 /// metadata, indexes, and abandoned temporary files.
-pub fn FileStore::compact(self : FileStore) -> Int raise FileStoreError {
+pub fn FileStore::compact(self : FileStore) -> Int32 raise FileStoreError {
   let removed = self.persist_snapshot()
   self.last_error = None
   removed
@@ -975,14 +967,14 @@ pub fn FileStore::compact(self : FileStore) -> Int raise FileStoreError {
 ///|
 pub fn FileStore::purge_quarantine(
   self : FileStore,
-) -> Int raise FileStoreError {
+) -> Int32 raise FileStoreError {
   cleanup_directory(self.paths.quarantine, [])
 }
 
 ///|
 pub fn FileStore::stats(self : FileStore) -> @mooncache.StoreStats {
   let current = self.memory.stats()
-  @mooncache.StoreStats::{
+  {
     entries: current.entries,
     body_bytes: current.body_bytes,
     puts: self.puts,
@@ -1029,3 +1021,21 @@ pub impl @mooncache.CacheStore for FileStore with fn clear(self) {
 pub impl @mooncache.CacheStore for FileStore with fn stats(self) {
   FileStore::stats(self)
 }
+
+///|
+pub extend FileStoreError with @debug.Debug::{to_repr}
+
+///|
+pub extend FileStoreError with Eq::{not_equal, equal}
+
+///|
+pub extend FileStoreOptions with @debug.Debug::{to_repr}
+
+///|
+pub extend FileStoreOptions with Eq::{not_equal, equal}
+
+///|
+pub extend FileStoreRecoveryReport with @debug.Debug::{to_repr}
+
+///|
+pub extend FileStoreRecoveryReport with Eq::{not_equal, equal}

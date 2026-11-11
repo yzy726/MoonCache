@@ -35,7 +35,7 @@ test "scenario JSON serializer round trips" {
     name: "round trip",
     mode: "shared",
     now: 42,
-    request: @MoonCache.ScenarioRequest::{
+    request: {
       http_method: "GET",
       uri: "https://example.test/",
       headers: { "Accept": "*/*" },
@@ -43,10 +43,7 @@ test "scenario JSON serializer round trips" {
     },
     stored_response: None,
     upstream_response: None,
-    expected: Some(@MoonCache.ScenarioExpected::{
-      action: "fetch",
-      reason: Some("MC_RUNTIME_002"),
-    }),
+    expected: Some({ action: "fetch", reason: Some("MC_RUNTIME_002"), }),
   }
   let encoded = @MoonCache.scenario_to_json(scenario)
   let decoded = try! @MoonCache.parse_scenario(encoded)

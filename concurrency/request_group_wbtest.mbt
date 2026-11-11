@@ -1,13 +1,14 @@
 ///|
+#derive(Eq, Debug)
 suberror RequestGroupTestError {
   RequestGroupTestError(String)
-} derive(Eq, Debug)
+}
 
 ///|
 async test "request group coalesces twenty equal operations" {
-  let group = RequestGroup::new(fn(value : Int) { value })
+  let group = RequestGroup::new(fn(value : Int32) { value })
   let calls = [0]
-  let results : Array[Int] = []
+  let results : Array[Int32] = []
   @async.with_task_group() <| tasks => {
     for _ in 0..<20 {
       tasks.spawn_bg() <| () => {
@@ -56,7 +57,7 @@ async test "request group keeps different keys independent" {
 
 ///|
 async test "request group broadcasts one failure and removes its state" {
-  let group = RequestGroup::new(fn(value : Int) { value })
+  let group = RequestGroup::new(fn(value : Int32) { value })
   let calls = [0]
   let failures = [0]
   @async.with_task_group() <| tasks => {
@@ -88,7 +89,7 @@ async test "request group broadcasts one failure and removes its state" {
 
 ///|
 async test "cancelling a follower leaves the shared operation running" {
-  let group = RequestGroup::new(fn(value : Int) { value })
+  let group = RequestGroup::new(fn(value : Int32) { value })
   let calls = [0]
   let leader_result = [0]
   let follower_cancelled = [false]
@@ -102,13 +103,10 @@ async test "cancelling a follower leaves the shared operation running" {
     }
     @async.sleep(2)
     let follower = tasks.spawn(allow_failure=true) <| () => {
-      try group.run("cancel-follower", fn() { 99 }) |> ignore catch {
-        error if @async.is_cancellation_error(error) => {
-          follower_cancelled[0] = true
-          raise error
-        }
-        error => raise error
-      }
+      observe_cancellation(
+        () => group.run("cancel-follower", fn() { 99 }) |> ignore,
+        handler=() => follower_cancelled[0] = true,
+      )
     }
     @async.sleep(2)
     follower.cancel()
@@ -122,26 +120,23 @@ async test "cancelling a follower leaves the shared operation running" {
 
 ///|
 async test "cancelling the leader does not cancel an existing follower" {
-  let group = RequestGroup::new(fn(value : Int) { value })
+  let group = RequestGroup::new(fn(value : Int32) { value })
   let calls = [0]
   let leader_cancelled = [false]
   let follower_result = [0]
   @async.with_task_group() <| tasks => {
     let leader = tasks.spawn(allow_failure=true) <| () => {
-      try
-        group.run("cancel-leader", () => {
-          calls[0] = calls[0] + 1
-          @async.sleep(40)
-          11
-        })
-        |> ignore
-      catch {
-        error if @async.is_cancellation_error(error) => {
-          leader_cancelled[0] = true
-          raise error
-        }
-        error => raise error
-      }
+      observe_cancellation(
+        () => {
+          group.run("cancel-leader", () => {
+            calls[0] = calls[0] + 1
+            @async.sleep(40)
+            11
+          })
+          |> ignore
+        },
+        handler=() => leader_cancelled[0] = true,
+      )
     }
     @async.sleep(2)
     tasks.spawn_bg() <| () => {
@@ -158,41 +153,31 @@ async test "cancelling the leader does not cancel an existing follower" {
 
 ///|
 async test "the last cancelled caller terminates the shared operation" {
-  let group = RequestGroup::new(fn(value : Int) { value })
+  let group = RequestGroup::new(fn(value : Int32) { value })
   let operation_cancelled = [false]
   let callers_cancelled = [0]
   @async.with_timeout(200, () => {
     @async.with_task_group() <| tasks => {
       let leader = tasks.spawn(allow_failure=true) <| () => {
-        try
-          group.run("cancel-all", () => {
-            @async.sleep(1_000) catch {
-              error if @async.is_cancellation_error(error) => {
+        observe_cancellation(
+          () => {
+            group.run("cancel-all", () => {
+              observe_cancellation(() => @async.sleep(1_000), handler=() => {
                 operation_cancelled[0] = true
-                raise error
-              }
-              error => raise error
-            }
-            1
-          })
-          |> ignore
-        catch {
-          error if @async.is_cancellation_error(error) => {
-            callers_cancelled[0] = callers_cancelled[0] + 1
-            raise error
-          }
-          error => raise error
-        }
+              })
+              1
+            })
+            |> ignore
+          },
+          handler=() => callers_cancelled[0] = callers_cancelled[0] + 1,
+        )
       }
       @async.sleep(2)
       let follower = tasks.spawn(allow_failure=true) <| () => {
-        try group.run("cancel-all", fn() { 2 }) |> ignore catch {
-          error if @async.is_cancellation_error(error) => {
-            callers_cancelled[0] = callers_cancelled[0] + 1
-            raise error
-          }
-          error => raise error
-        }
+        observe_cancellation(
+          () => group.run("cancel-all", fn() { 2 }) |> ignore,
+          handler=() => callers_cancelled[0] = callers_cancelled[0] + 1,
+        )
       }
       @async.sleep(2)
       leader.cancel()
@@ -205,4 +190,19 @@ async test "the last cancelled caller terminates the shared operation" {
   assert_eq(group.stats().cancelled_waiters, 2)
   assert_eq(group.stats().active_flights, 0)
   assert_eq(group.stats().active_waiters, 0)
+}
+
+///|
+pub extend RequestGroupTestError with @debug.Debug::{to_repr}
+
+///|
+pub extend RequestGroupTestError with Eq::{not_equal, equal}
+
+///|
+async fn[X] observe_cancellation(
+  operation : async () -> X,
+  handler~ : () -> Unit,
+) -> X {
+  defer (if @async.is_being_cancelled() { handler() })
+  operation()
 }

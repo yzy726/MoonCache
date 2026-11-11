@@ -1,12 +1,13 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct VarySpec {
   fields : Array[String]
   star : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn VarySpec::default() -> VarySpec {
-  VarySpec::{ fields: [], star: false }
+  { fields: [], star: false, }
 }
 
 ///|
@@ -30,7 +31,7 @@ pub fn parse_vary(headers : HeaderMap) -> VarySpec {
       for part in value.split(",") {
         let field = normalize_header_name(part.to_owned())
         if field == "*" {
-          return VarySpec::{ fields: [], star: true }
+          return { fields: [], star: true, }
         }
         if field != "" && is_valid_header_name(field) {
           insert_sorted_unique(fields, field)
@@ -38,7 +39,7 @@ pub fn parse_vary(headers : HeaderMap) -> VarySpec {
       }
     None => ()
   }
-  VarySpec::{ fields, star: false }
+  { fields, star: false, }
 }
 
 ///|
@@ -80,20 +81,22 @@ pub fn build_variant_key(headers : HeaderMap, vary : VarySpec) -> VariantKey? {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum VaryMatchKind {
   VaryMatchedResult
   VaryMismatchResult
   VaryStarResult
-} derive(Eq, Compare, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct VaryMatch {
   kind : VaryMatchKind
   differing_field : String?
   stored_key : VariantKey?
   candidate_key : VariantKey?
   reason : CacheReason
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn match_vary(
@@ -103,7 +106,7 @@ pub fn match_vary(
 ) -> VaryMatch {
   let vary = parse_vary(stored_response.headers)
   if vary.star {
-    return VaryMatch::{
+    return {
       kind: VaryStarResult,
       differing_field: None,
       stored_key: None,
@@ -114,7 +117,7 @@ pub fn match_vary(
   let stored_key = build_variant_key(stored_request.headers, vary)
   let candidate_key = build_variant_key(candidate_request.headers, vary)
   if stored_key == candidate_key {
-    return VaryMatch::{
+    return {
       kind: VaryMatchedResult,
       differing_field: None,
       stored_key,
@@ -145,7 +148,7 @@ pub fn match_vary(
       break
     }
   }
-  VaryMatch::{
+  {
     kind: VaryMismatchResult,
     differing_field,
     stored_key,
@@ -162,12 +165,13 @@ pub fn match_vary(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct VariantSelection {
   entry : StoredEntry?
-  inspected : Int
+  inspected : Int32
   variant_key : VariantKey?
   reasons : Array[CacheReason]
-} derive(Eq, Debug)
+}
 
 ///|
 /// Select the newest matching entry. Equal timestamps keep the store's
@@ -196,10 +200,37 @@ pub fn select_variant(
       }
     }
   }
-  VariantSelection::{
+  {
     entry: selected,
     inspected: entries.length(),
     variant_key: selected_key,
     reasons,
   }
 }
+
+///|
+pub extend VariantSelection with @debug.Debug::{to_repr}
+
+///|
+pub extend VariantSelection with Eq::{not_equal, equal}
+
+///|
+pub extend VaryMatch with @debug.Debug::{to_repr}
+
+///|
+pub extend VaryMatch with Eq::{not_equal, equal}
+
+///|
+pub extend VaryMatchKind with @debug.Debug::{to_repr}
+
+///|
+pub extend VaryMatchKind with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend VaryMatchKind with Eq::{not_equal, equal}
+
+///|
+pub extend VarySpec with @debug.Debug::{to_repr}
+
+///|
+pub extend VarySpec with Eq::{not_equal, equal}

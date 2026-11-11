@@ -27,7 +27,7 @@ priv suberror CliArgumentError {
 ///|
 fn usage() -> String {
   let text =
-    #|MoonCache 0.2.0
+    #|MoonCache 0.3.0
     #|
     #|Usage:
     #|  mooncache explain <scenario.json> [--json]
@@ -166,7 +166,7 @@ fn store_stats_report(path : String, format : OutputFormat) -> String raise {
 ///|
 priv struct InspectItem {
   uri : String
-  variants : Int
+  variants : Int32
   body_bytes : Int64
 }
 
@@ -194,7 +194,7 @@ fn collect_inspect_items(store : @file_store.FileStore) -> Array[InspectItem] {
     for entry in variants {
       body_bytes = body_bytes + entry.body_size()
     }
-    InspectItem::{ uri, variants: variants.length(), body_bytes }
+    { uri, variants: variants.length(), body_bytes, }
   })
 }
 
@@ -323,7 +323,7 @@ fn store_verify_report(path : String, format : OutputFormat) -> String raise {
 }
 
 ///|
-fn clean_json(quarantined : Int, compacted : Int) -> String {
+fn clean_json(quarantined : Int32, compacted : Int32) -> String {
   Json::object({
     "quarantined_files_purged": quarantined,
     "compacted_entries": compacted,
@@ -331,7 +331,7 @@ fn clean_json(quarantined : Int, compacted : Int) -> String {
 }
 
 ///|
-fn clean_text(quarantined : Int, compacted : Int) -> String {
+fn clean_text(quarantined : Int32, compacted : Int32) -> String {
   [
     "Quarantined files purged: \{quarantined}",
     "Compacted entries: \{compacted}",
@@ -442,7 +442,7 @@ fn resolve_directory_entry(directory : String, name : String) -> String {
 }
 
 ///|
-fn compare_cli_paths(left : String, right : String) -> Int {
+fn compare_cli_paths(left : String, right : String) -> Int32 {
   let limit = if left.length() < right.length() {
     left.length()
   } else {
@@ -527,7 +527,7 @@ fn read_replay_case(path : String) -> ReplayCase {
   try {
     let text = @fs.read_file_to_string(path)
     let analysis = @mooncache.analyze_scenario_json(text)
-    ReplayCase::{
+    {
       file: path,
       name: analysis.name,
       action: Some(analysis.trace.action.label()),
@@ -536,7 +536,7 @@ fn read_replay_case(path : String) -> ReplayCase {
     }
   } catch {
     error =>
-      ReplayCase::{
+      {
         file: path,
         name: path,
         action: None,
@@ -563,8 +563,8 @@ fn print_replay_case(result : ReplayCase) -> Unit {
 fn replay_json(
   directory : String,
   results : Array[ReplayCase],
-  passed : Int,
-  failed : Int,
+  passed : Int32,
+  failed : Int32,
 ) -> String {
   Json::object({
     "directory": directory,
@@ -577,7 +577,7 @@ fn replay_json(
 
 ///|
 fn replay(directory : String, format : OutputFormat) -> Bool raise {
-  let names = @fs.read_dir(directory)
+  let names = @fs.read_dir(directory).to_owned()
   names.sort_by(compare_cli_paths)
   let results : Array[ReplayCase] = []
   let mut passed = 0
@@ -611,14 +611,14 @@ fn replay(directory : String, format : OutputFormat) -> Bool raise {
 }
 
 ///|
-fn run(args : Array[String]) -> Int raise {
+fn run(args : Array[String]) -> Int32 raise {
   match parse_command(args) {
     Help => {
       println(usage())
       0
     }
     Version => {
-      println("mooncache 0.2.0")
+      println("mooncache 0.3.0")
       0
     }
     Explain(path, format) => {
@@ -652,7 +652,7 @@ fn run(args : Array[String]) -> Int raise {
 }
 
 ///|
-extern "C" fn process_exit(code : Int) = "exit"
+extern "C" fn process_exit(code : Int32) = "exit"
 
 ///|
 fn main {

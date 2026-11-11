@@ -3,7 +3,7 @@ async fn demo() -> Unit {
   println("demo_proxy")
   println("upstream: scripted recording transport (no real network)")
   let origin = @mooncache.RecordingTransport::with_outcomes([
-    @mooncache.TransportSuccess(
+    TransportSuccess(
       @support.response(
         200,
         [
@@ -16,11 +16,11 @@ async fn demo() -> Unit {
         0L,
       ),
     ),
-    @mooncache.TransportSuccess(
+    TransportSuccess(
       @support.response(304, [("ETag", "\"demo-v1\"")], b"", 20L, 20L),
     ),
-    @mooncache.TransportFailure("connection refused"),
-    @mooncache.TransportSuccess(
+    TransportFailure("connection refused"),
+    TransportSuccess(
       @support.response(
         200,
         [
@@ -32,7 +32,7 @@ async fn demo() -> Unit {
         101L,
       ),
     ),
-    @mooncache.TransportSuccess(
+    TransportSuccess(
       @support.response(
         200,
         [("Cache-Control", "max-age=60")],

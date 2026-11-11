@@ -1,9 +1,10 @@
 ///|
 /// Conversion failures are kept inside the optional adapter package.
+#derive(Eq, Debug)
 pub suberror Http11AdapterError {
   AbsoluteUriRequired(String)
   InvalidHeaderName(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Http11AdapterError::message(self : Http11AdapterError) -> String {
@@ -89,7 +90,7 @@ pub fn response_to_transport(
   response : @wire11.Response,
   request_time : @mooncache.Timestamp,
   response_time : @mooncache.Timestamp,
-  body_complete? : Bool = true,
+  body_complete~ : Bool = true,
 ) -> @mooncache.TransportResponse raise Http11AdapterError {
   let headers = header_map_from_pairs(response.headers)
   let meta = @mooncache.ResponseMeta::new(
@@ -103,7 +104,7 @@ pub fn response_to_transport(
 }
 
 ///|
-fn default_reason_phrase(status : Int) -> String {
+fn default_reason_phrase(status : Int32) -> String {
   match status {
     100 => "Continue"
     101 => "Switching Protocols"
@@ -158,7 +159,7 @@ fn default_reason_phrase(status : Int) -> String {
 pub fn runtime_request_to_http11(
   request : @mooncache.RuntimeRequest,
 ) -> @wire11.Request {
-  @wire11.Request::{
+  {
     http_method: request.meta.http_method,
     uri: request.meta.uri,
     version: "HTTP/1.1",
@@ -172,7 +173,7 @@ fn response_meta_to_http11(
   meta : @mooncache.ResponseMeta,
   body : Bytes,
 ) -> @wire11.Response {
-  @wire11.Response::{
+  {
     version: "HTTP/1.1",
     status_code: meta.status,
     reason_phrase: default_reason_phrase(meta.status),
@@ -196,3 +197,9 @@ pub fn runtime_response_to_http11(
 ) -> @wire11.Response {
   response_meta_to_http11(response.meta, response.body)
 }
+
+///|
+pub extend Http11AdapterError with @debug.Debug::{to_repr}
+
+///|
+pub extend Http11AdapterError with Eq::{not_equal, equal}

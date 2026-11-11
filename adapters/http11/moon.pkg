@@ -1,4 +1,8 @@
 import {
+  "moonbitlang/core/debug",
+}
+
+import {
   "Ag108/MoonCache" @mooncache,
   "f4ah6o/http11" @wire11,
 }

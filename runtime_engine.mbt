@@ -1,11 +1,12 @@
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum ResponseSource {
   CacheSource
   UpstreamSource
   RevalidatedSource
   StaleSource
   OnlyIfCachedSource
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn ResponseSource::label(self : ResponseSource) -> String {
@@ -19,18 +20,19 @@ pub fn ResponseSource::label(self : ResponseSource) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RuntimeResponse {
   meta : ResponseMeta
   body : Bytes
   source : ResponseSource
   trace : CacheTrace
-} derive(Eq, Debug)
+}
 
 ///|
 /// Deep-copy mutable metadata and trace state while sharing immutable bytes.
 pub fn RuntimeResponse::copy(self : RuntimeResponse) -> RuntimeResponse {
-  RuntimeResponse::{
-    meta: ResponseMeta::{ ..self.meta, headers: self.meta.headers.copy() },
+  {
+    meta: { ..self.meta, headers: self.meta.headers.copy(), },
     body: self.body,
     source: self.source,
     trace: self.trace.copy(),
@@ -38,9 +40,10 @@ pub fn RuntimeResponse::copy(self : RuntimeResponse) -> RuntimeResponse {
 }
 
 ///|
+#derive(Eq, Debug)
 pub suberror RuntimeError {
   RuntimeTransportFailure(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn RuntimeError::message(self : RuntimeError) -> String {
@@ -66,7 +69,7 @@ fn cached_meta_with_age(entry : StoredEntry, now : Timestamp) -> ResponseMeta {
   ignore(headers.set("age", age.current_age.seconds().to_string()))
   // Warning was obsoleted by RFC 9111; never forward a persisted legacy value.
   ignore(headers.remove("warning"))
-  ResponseMeta::{ ..entry.response, headers, }
+  { ..entry.response, headers, }
 }
 
 ///|
@@ -86,7 +89,7 @@ fn response_from_entry(
   trace : CacheTrace,
   now : Timestamp,
 ) -> RuntimeResponse {
-  RuntimeResponse::{
+  {
     meta: cached_meta_with_age(entry, now),
     body: response_body_for_method(entry.body, request.meta.http_method),
     source,
@@ -127,7 +130,7 @@ fn only_if_cached_response(
 ) -> RuntimeResponse {
   let headers = HeaderMap::new()
   ignore(headers.set("content-length", "0"))
-  RuntimeResponse::{
+  {
     meta: ResponseMeta::complete(504, headers, request.meta.request_time, now),
     body: b"",
     source: OnlyIfCachedSource,
@@ -234,7 +237,7 @@ fn[S : CacheStore, T : Transport] fetch_from_origin(
   if !is_safe_http_method(request.meta.http_method) {
     apply_invalidation(store, request, upstream, trace)
   }
-  RuntimeResponse::{
+  {
     meta: upstream.meta,
     body: response_body_for_method(upstream.body, request.meta.http_method),
     source: UpstreamSource,
@@ -266,7 +269,7 @@ fn[S : CacheStore, T : Transport] execute_revalidation(
     Some(kind) => trace.validator = Some(kind.label())
     None => ()
   }
-  let conditional = RuntimeRequest::{ ..request, meta: plan.request }
+  let conditional = RuntimeRequest::{ ..request, meta: plan.request, }
   let stale_policy = evaluate_stale_policy(
     request.meta,
     entry.response,
@@ -307,7 +310,7 @@ fn[S : CacheStore, T : Transport] execute_revalidation(
       )
     }
     record_stale_denial(trace, stale_policy)
-    return RuntimeResponse::{
+    return {
       meta: upstream.meta,
       body: response_body_for_method(upstream.body, request.meta.http_method),
       source: RevalidatedSource,
@@ -341,7 +344,7 @@ fn[S : CacheStore, T : Transport] execute_revalidation(
     CacheStore::remove_variant(store, entry.primary_key, entry.variant_key),
   )
   store_transport_response(store, request, upstream, options, now, trace)
-  RuntimeResponse::{
+  {
     meta: upstream.meta,
     body: response_body_for_method(upstream.body, request.meta.http_method),
     source: RevalidatedSource,
@@ -455,7 +458,7 @@ pub fn[S : CacheStore, T : Transport] execute_cached(
           )
         }
         record_stale_denial(trace, stale_policy)
-        return RuntimeResponse::{
+        return {
           meta: upstream.meta,
           body: response_body_for_method(
             upstream.body,
@@ -469,7 +472,7 @@ pub fn[S : CacheStore, T : Transport] execute_cached(
         CacheStore::remove_variant(store, entry.primary_key, entry.variant_key),
       )
       store_transport_response(store, request, upstream, options, now, trace)
-      RuntimeResponse::{
+      {
         meta: upstream.meta,
         body: response_body_for_method(upstream.body, request.meta.http_method),
         source: UpstreamSource,
@@ -496,7 +499,7 @@ pub fn[S, T] CachedRuntime::new(
   transport : T,
   options : CacheOptions,
 ) -> CachedRuntime[S, T] {
-  CachedRuntime::{ store, transport, options, telemetry: CacheTelemetry::new() }
+  { store, transport, options, telemetry: CacheTelemetry::new(), }
 }
 
 ///|
@@ -504,7 +507,7 @@ pub fn[S, T, O : CacheObserver] CachedRuntime::with_observer(
   self : CachedRuntime[S, T],
   observer : O,
 ) -> CachedRuntime[S, T] {
-  CachedRuntime::{ ..self, telemetry: self.telemetry.with_observer(observer) }
+  { ..self, telemetry: self.telemetry.with_observer(observer), }
 }
 
 ///|
@@ -558,7 +561,7 @@ pub fn[S, T] CachedRuntime::stats_snapshot(
 pub fn[S : CacheStore, T] CachedRuntime::purge(
   self : CachedRuntime[S, T],
   uri : String,
-) -> Int {
+) -> Int32 {
   let removed = CacheStore::invalidate_uri(self.store, uri)
   self.telemetry.record_purge("PURGE", uri, removed)
   removed
@@ -572,3 +575,24 @@ pub fn[S : CacheStore, T] CachedRuntime::clear(
   CacheStore::clear(self.store)
   self.telemetry.record_purge("CLEAR", "*", before)
 }
+
+///|
+pub extend ResponseSource with @debug.Debug::{to_repr}
+
+///|
+pub extend ResponseSource with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend ResponseSource with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeError with @debug.Debug::{to_repr}
+
+///|
+pub extend RuntimeError with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeResponse with @debug.Debug::{to_repr}
+
+///|
+pub extend RuntimeResponse with Eq::{not_equal, equal}

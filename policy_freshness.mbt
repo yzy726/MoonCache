@@ -1,11 +1,12 @@
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum FreshnessSource {
   SharedMaxAge
   MaxAge
   Expires
   HeuristicLastModified
   NoFreshness
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn FreshnessSource::label(self : FreshnessSource) -> String {
@@ -30,13 +31,14 @@ pub fn FreshnessSource::reason(self : FreshnessSource) -> CacheReasonCode {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FreshnessCalculation {
   lifetime : DeltaSeconds
   source : FreshnessSource
   date_value : Timestamp
   expires_value : Timestamp?
   last_modified_value : Timestamp?
-} derive(Eq, Debug)
+}
 
 ///|
 fn response_date_or_time(response : ResponseMeta) -> Timestamp {
@@ -70,7 +72,7 @@ pub fn calculate_freshness_lifetime(
     "last-modified",
   )
   if options.mode is Shared && directives.shared_max_age is Some(delta) {
-    return FreshnessCalculation::{
+    return {
       lifetime: delta,
       source: SharedMaxAge,
       date_value,
@@ -79,7 +81,7 @@ pub fn calculate_freshness_lifetime(
     }
   }
   if directives.max_age is Some(delta) {
-    return FreshnessCalculation::{
+    return {
       lifetime: delta,
       source: MaxAge,
       date_value,
@@ -92,7 +94,7 @@ pub fn calculate_freshness_lifetime(
       Some(expires) => expires.elapsed_since(date_value)
       None => DeltaSeconds::zero()
     }
-    return FreshnessCalculation::{
+    return {
       lifetime,
       source: Expires,
       date_value,
@@ -108,7 +110,7 @@ pub fn calculate_freshness_lifetime(
     let lifetime = resource_age
       .saturating_scale(numerator, 1_000)
       .min(options.max_heuristic_lifetime)
-    return FreshnessCalculation::{
+    return {
       lifetime,
       source: HeuristicLastModified,
       date_value,
@@ -116,7 +118,7 @@ pub fn calculate_freshness_lifetime(
       last_modified_value,
     }
   }
-  FreshnessCalculation::{
+  {
     lifetime: DeltaSeconds::zero(),
     source: NoFreshness,
     date_value,
@@ -124,3 +126,18 @@ pub fn calculate_freshness_lifetime(
     last_modified_value,
   }
 }
+
+///|
+pub extend FreshnessCalculation with @debug.Debug::{to_repr}
+
+///|
+pub extend FreshnessCalculation with Eq::{not_equal, equal}
+
+///|
+pub extend FreshnessSource with @debug.Debug::{to_repr}
+
+///|
+pub extend FreshnessSource with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend FreshnessSource with Eq::{not_equal, equal}
