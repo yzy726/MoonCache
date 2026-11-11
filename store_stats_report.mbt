@@ -25,7 +25,7 @@ pub fn StoreStats::requests(self : StoreStats) -> Int64 {
 
 ///|
 /// Integer hit ratio in thousandths, suitable for deterministic reports.
-pub fn StoreStats::hit_rate_per_mille(self : StoreStats) -> Int {
+pub fn StoreStats::hit_rate_per_mille(self : StoreStats) -> Int32 {
   let requests = self.requests()
   if requests <= 0 {
     0

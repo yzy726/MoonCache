@@ -1,14 +1,16 @@
 ///|
 /// Version of the durable metadata format understood by this package.
-pub const FILE_STORE_FORMAT_VERSION : Int = 1
+pub const FILE_STORE_FORMAT_VERSION : Int32 = 1
 
 ///|
+#derive(FromJson, ToJson)
 priv struct DiskHeaderV1 {
   name : String
   value : String
-} derive(FromJson, ToJson)
+}
 
 ///|
+#derive(FromJson, ToJson)
 priv struct DiskPolicyV1 {
   cacheable : Bool
   freshness_lifetime_seconds : Int64
@@ -19,11 +21,12 @@ priv struct DiskPolicyV1 {
   proxy_revalidate : Bool
   is_private : Bool
   is_public : Bool
-} derive(FromJson, ToJson)
+}
 
 ///|
+#derive(FromJson, ToJson)
 priv struct DiskEntryV1 {
-  format_version : Int
+  format_version : Int32
   entry_id : String
   primary_method : String
   primary_uri : String
@@ -33,7 +36,7 @@ priv struct DiskEntryV1 {
   request_uri : String
   request_headers : Array[DiskHeaderV1]
   request_time_seconds : Int64
-  response_status : Int
+  response_status : Int32
   response_headers : Array[DiskHeaderV1]
   response_request_time_seconds : Int64
   response_time_seconds : Int64
@@ -43,23 +46,25 @@ priv struct DiskEntryV1 {
   body_size : Int64
   stored_at_seconds : Int64
   last_accessed_at_seconds : Int64
-} derive(FromJson, ToJson)
+}
 
 ///|
+#derive(FromJson, ToJson)
 priv struct DiskManifestV1 {
-  format_version : Int
+  format_version : Int32
   generation : Int64
   entry_ids : Array[String]
-} derive(FromJson, ToJson)
+}
 
 ///|
+#derive(FromJson, ToJson)
 priv struct DiskIndexV1 {
-  format_version : Int
+  format_version : Int32
   index_id : String
   primary_method : String
   primary_uri : String
   entry_ids : Array[String]
-} derive(FromJson, ToJson)
+}
 
 ///|
 fn sha256_hex_bytes(content : Bytes) -> String {
@@ -114,13 +119,11 @@ fn is_lower_hex_digest(value : String) -> Bool {
 
 ///|
 fn persisted_headers(headers : @mooncache.HeaderMap) -> Array[DiskHeaderV1] {
-  headers
-  .pairs()
-  .map(fn(pair) { DiskHeaderV1::{ name: pair.0, value: pair.1 } })
+  headers.pairs().map(fn(pair) { { name: pair.0, value: pair.1, } })
 }
 
 ///|
-fn persisted_header_bytes(headers : Array[DiskHeaderV1]) -> Int {
+fn persisted_header_bytes(headers : Array[DiskHeaderV1]) -> Int32 {
   let mut size = 0
   for header in headers {
     size = size +
@@ -138,7 +141,7 @@ fn contains_forbidden_header_octet(value : String) -> Bool {
 ///|
 fn restore_headers(
   headers : Array[DiskHeaderV1],
-  maximum_bytes : Int,
+  maximum_bytes : Int32,
 ) -> @mooncache.HeaderMap raise FileStoreError {
   guard persisted_header_bytes(headers) <= maximum_bytes else {
     raise FileStoreCorrupt("persisted header block exceeds configured limit")
@@ -158,7 +161,7 @@ fn restore_headers(
 
 ///|
 fn DiskEntryV1::from_entry(entry : @mooncache.StoredEntry) -> DiskEntryV1 {
-  DiskEntryV1::{
+  {
     format_version: FILE_STORE_FORMAT_VERSION,
     entry_id: entry_file_id(entry),
     primary_method: entry.primary_key.http_method,
@@ -174,7 +177,7 @@ fn DiskEntryV1::from_entry(entry : @mooncache.StoredEntry) -> DiskEntryV1 {
     response_request_time_seconds: entry.response.request_time.seconds(),
     response_time_seconds: entry.response.response_time.seconds(),
     response_body_complete: entry.response.body_complete,
-    policy: DiskPolicyV1::{
+    policy: {
       cacheable: entry.policy.cacheable,
       freshness_lifetime_seconds: entry.policy.freshness_lifetime.seconds(),
       requires_revalidation: entry.policy.requires_revalidation,
@@ -201,7 +204,7 @@ fn validate_non_negative_time(value : Int64) -> Bool {
 fn DiskEntryV1::to_entry(
   self : DiskEntryV1,
   body : Bytes,
-  maximum_header_bytes : Int,
+  maximum_header_bytes : Int32,
 ) -> @mooncache.StoredEntry raise FileStoreError {
   guard self.format_version == FILE_STORE_FORMAT_VERSION else {
     raise FileStoreUnsupportedVersion(self.format_version)

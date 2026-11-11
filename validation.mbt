@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum ValidatorKind {
   StrongEtag
   WeakEtag
@@ -6,7 +7,7 @@ pub(all) enum ValidatorKind {
   StrongEtagAndLastModified
   WeakEtagAndLastModified
   CallerConditions
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn ValidatorKind::label(self : ValidatorKind) -> String {
@@ -29,7 +30,7 @@ fn etag_is_weak(value : String) -> Bool {
 pub fn is_valid_etag(value : String) -> Bool {
   let tag = value.trim(chars=" \t").to_owned()
   let tag_text = if tag.has_prefix("W/") {
-    tag.sub(start=2).to_owned()
+    tag.exact_view(start=2).to_owned()
   } else {
     tag
   }
@@ -38,7 +39,9 @@ pub fn is_valid_etag(value : String) -> Bool {
     !tag_text.has_suffix("\"") {
     return false
   }
-  let inside = tag_text.sub(start=1, end=tag_text.length() - 1).to_owned()
+  let inside = tag_text
+    .exact_view(start=1, end=tag_text.length() - 1)
+    .to_owned()
   !inside.contains("\"") && !inside.contains("\r") && !inside.contains("\n")
 }
 
@@ -81,12 +84,13 @@ pub fn has_usable_validator(response : ResponseMeta) -> Bool {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RevalidationPlan {
   request : RequestMeta
   generated_headers : HeaderMap
   validator_kind : ValidatorKind?
   reasons : Array[CacheReason]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn RevalidationPlan::can_revalidate(self : RevalidationPlan) -> Bool {
@@ -162,7 +166,7 @@ pub fn create_revalidation_plan(
         None
       }
   }
-  RevalidationPlan::{
+  {
     request: request.with_headers(headers),
     generated_headers: generated,
     validator_kind,
@@ -171,9 +175,10 @@ pub fn create_revalidation_plan(
 }
 
 ///|
+#derive(Eq, Debug)
 pub suberror ValidationError {
-  ExpectedNotModified(Int)
-} derive(Eq, Debug)
+  ExpectedNotModified(Int32)
+}
 
 ///|
 pub fn ValidationError::message(self : ValidationError) -> String {
@@ -247,11 +252,12 @@ fn merged_304_headers(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct NotModifiedResult {
   entry : StoredEntry
   storage : StorageDecision
   reasons : Array[CacheReason]
-} derive(Eq, Debug)
+}
 
 ///|
 /// Merge a 304 response into a stored entry while retaining the cached status
@@ -291,5 +297,32 @@ pub fn merge_not_modified(
     CacheReason::with_rfc(RevalidateNotModified, "RFC9111-4.3.4"),
   ]
   reasons.push_iter(storage.reasons.iter())
-  NotModifiedResult::{ entry: merged, storage, reasons }
+  { entry: merged, storage, reasons, }
 }
+
+///|
+pub extend NotModifiedResult with @debug.Debug::{to_repr}
+
+///|
+pub extend NotModifiedResult with Eq::{not_equal, equal}
+
+///|
+pub extend RevalidationPlan with @debug.Debug::{to_repr}
+
+///|
+pub extend RevalidationPlan with Eq::{not_equal, equal}
+
+///|
+pub extend ValidationError with @debug.Debug::{to_repr}
+
+///|
+pub extend ValidationError with Eq::{not_equal, equal}
+
+///|
+pub extend ValidatorKind with @debug.Debug::{to_repr}
+
+///|
+pub extend ValidatorKind with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend ValidatorKind with Eq::{not_equal, equal}

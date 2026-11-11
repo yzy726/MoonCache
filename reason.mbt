@@ -1,6 +1,7 @@
 ///|
 /// Stable machine-readable reasons used by policy, store, runtime, and CLI
 /// traces. Existing code strings are not repurposed.
+#derive(Eq, Compare, Debug)
 pub(all) enum CacheReasonCode {
   StoreAllowed
   StoreMethodUnsupported
@@ -65,7 +66,7 @@ pub(all) enum CacheReasonCode {
   InvalidateRelatedUri
   InvalidateSkippedSafeMethod
   InvalidateSkippedErrorStatus
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn CacheReasonCode::code(self : CacheReasonCode) -> String {
@@ -208,15 +209,16 @@ pub fn CacheReasonCode::message(self : CacheReasonCode) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct CacheReason {
   code : CacheReasonCode
   detail : String?
   rfc : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn CacheReason::new(code : CacheReasonCode) -> CacheReason {
-  CacheReason::{ code, detail: None, rfc: None }
+  { code, detail: None, rfc: None, }
 }
 
 ///|
@@ -224,7 +226,7 @@ pub fn CacheReason::with_detail(
   code : CacheReasonCode,
   detail : String,
 ) -> CacheReason {
-  CacheReason::{ code, detail: Some(detail), rfc: None }
+  { code, detail: Some(detail), rfc: None, }
 }
 
 ///|
@@ -232,5 +234,20 @@ pub fn CacheReason::with_rfc(
   code : CacheReasonCode,
   rfc : String,
 ) -> CacheReason {
-  CacheReason::{ code, detail: None, rfc: Some(rfc) }
+  { code, detail: None, rfc: Some(rfc), }
 }
+
+///|
+pub extend CacheReason with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheReason with Eq::{not_equal, equal}
+
+///|
+pub extend CacheReasonCode with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheReasonCode with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend CacheReasonCode with Eq::{not_equal, equal}

@@ -3,7 +3,7 @@ fn stale_policy_for(
   request_headers : Array[(String, String)],
   response_headers : Array[(String, String)],
   now : Int64,
-  shared? : Bool = false,
+  shared~ : Bool = false,
 ) -> @MoonCache.StalePolicy {
   @MoonCache.evaluate_stale_policy(
     policy_request("GET", request_headers),

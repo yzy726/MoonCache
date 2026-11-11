@@ -1,48 +1,48 @@
 ///|
+#derive(Eq, Debug, FromJson(fields(http_method(rename="method"))), ToJson(fields(http_method(rename="method"))))
 pub(all) struct ScenarioRequest {
   http_method : String
   uri : String
   headers : Map[String, String]
-  request_time : Int?
-} derive (
-  Eq,
-  Debug,
-  FromJson(fields(http_method(rename="method"))),
-  ToJson(fields(http_method(rename="method"))),
-)
+  request_time : Int32?
+}
 
 ///|
+#derive(Eq, Debug, FromJson, ToJson)
 pub(all) struct ScenarioResponse {
-  status : Int
+  status : Int32
   headers : Map[String, String]
-  request_time : Int?
-  response_time : Int?
+  request_time : Int32?
+  response_time : Int32?
   body : String?
   complete : Bool?
-} derive(Eq, Debug, FromJson, ToJson)
+}
 
 ///|
+#derive(Eq, Debug, FromJson, ToJson)
 pub(all) struct ScenarioExpected {
   action : String
   reason : String?
-} derive(Eq, Debug, FromJson, ToJson)
+}
 
 ///|
 /// Stable, transport-free scenario format used by unit tests and the CLI.
+#derive(Eq, Debug, FromJson, ToJson)
 pub(all) struct CacheScenario {
   name : String
   mode : String
-  now : Int
+  now : Int32
   request : ScenarioRequest
   stored_response : ScenarioResponse?
   upstream_response : ScenarioResponse?
   expected : ScenarioExpected?
-} derive(Eq, Debug, FromJson, ToJson)
+}
 
 ///|
+#derive(Eq, Debug)
 pub suberror ScenarioError {
   ScenarioError(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ScenarioError::message(self : ScenarioError) -> String {
@@ -108,3 +108,57 @@ pub fn ScenarioResponse::body_bytes(self : ScenarioResponse) -> Bytes {
     None => b""
   }
 }
+
+///|
+pub extend CacheScenario with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheScenario with @json.ToJson::{to_json}
+
+///|
+pub extend CacheScenario with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CacheScenario with Eq::{not_equal, equal}
+
+///|
+pub extend ScenarioError with @debug.Debug::{to_repr}
+
+///|
+pub extend ScenarioError with Eq::{not_equal, equal}
+
+///|
+pub extend ScenarioExpected with @debug.Debug::{to_repr}
+
+///|
+pub extend ScenarioExpected with @json.ToJson::{to_json}
+
+///|
+pub extend ScenarioExpected with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ScenarioExpected with Eq::{not_equal, equal}
+
+///|
+pub extend ScenarioRequest with @debug.Debug::{to_repr}
+
+///|
+pub extend ScenarioRequest with @json.ToJson::{to_json}
+
+///|
+pub extend ScenarioRequest with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ScenarioRequest with Eq::{not_equal, equal}
+
+///|
+pub extend ScenarioResponse with @debug.Debug::{to_repr}
+
+///|
+pub extend ScenarioResponse with @json.ToJson::{to_json}
+
+///|
+pub extend ScenarioResponse with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ScenarioResponse with Eq::{not_equal, equal}

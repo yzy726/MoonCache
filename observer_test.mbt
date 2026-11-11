@@ -5,7 +5,7 @@ struct RecordingCacheObserver {
 
 ///|
 fn RecordingCacheObserver::new() -> RecordingCacheObserver {
-  RecordingCacheObserver::{ events: [] }
+  { events: [], }
 }
 
 ///|
@@ -18,7 +18,7 @@ impl @MoonCache.CacheObserver for RecordingCacheObserver with fn observe(
 
 ///|
 fn observer_response(
-  status : Int,
+  status : Int32,
   headers : Array[(String, String)],
   body : Bytes,
   request_time : Int64,
@@ -193,7 +193,7 @@ test "cached runtime records upstream errors that do not return a response" {
     )
     |> ignore
   catch {
-    @MoonCache.RuntimeTransportFailure("connection refused") => ()
+    RuntimeTransportFailure("connection refused") => ()
     error => raise error
   }
   let snapshot = runtime.stats_snapshot()

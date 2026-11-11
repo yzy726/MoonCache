@@ -1,7 +1,12 @@
 # MoonCache
 
+## 0.3.0 update
+
+- Support MoonBit 0.10.20 and migrate deprecated syntax while preserving existing trait methods.
+- Update HTTP and async dependencies for the current toolchain.
+
 MoonCache is a transport-independent, explainable HTTP cache policy and
-runtime toolkit for MoonBit. It implements the `0.2.0` cache lifecycle:
+runtime toolkit for MoonBit. It implements the `0.3.0` cache lifecycle:
 
 ```text
 Request
@@ -20,7 +25,7 @@ cookie jar, or production reverse proxy.
 
 ## Release status
 
-The `0.2.0` release includes:
+The `0.3.0` release includes:
 
 - normalized request, response, header, URI, and saturating time models;
 - private/shared storage rules and authenticated-request protection;
@@ -67,7 +72,7 @@ moon check --target wasm-gc --deny-warn
 Add the published release with:
 
 ```bash
-moon add Ag108/MoonCache@0.2.0
+moon add Ag108/MoonCache@0.3.0
 ```
 
 ## Minimal cached runtime
@@ -188,7 +193,7 @@ call count and exits unsuccessfully on a regression.
 
 ### HTTP11
 
-`adapters/http11` directly converts `f4ah6o/http11@0.1.1` request and response
+`adapters/http11` directly converts `f4ah6o/http11@0.1.2` request and response
 types. Origin-form request targets require the caller to supply the absolute
 URI:
 
@@ -206,7 +211,7 @@ The core package does not import HTTP11.
 `adapters/async_http` provides `AsyncTransport`,
 `MoonbitAsyncHttpTransport`, `ScriptedAsyncTransport`, and
 `AsyncCachedRuntime`. The real transport currently supports GET, POST, and PUT
-through `moonbitlang/async/http@0.20.2` and receives an injected response clock:
+through `moonbitlang/async/http@0.22.9` and receives an injected response clock:
 
 ```moonbit nocheck
 ///|

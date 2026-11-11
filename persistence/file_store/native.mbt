@@ -1,6 +1,6 @@
 ///|
 #borrow(path)
-extern "C" fn file_store_mkdirs_ffi(path : Bytes) -> Int = "mooncache_file_store_mkdirs"
+extern "C" fn file_store_mkdirs_ffi(path : Bytes) -> Int32 = "mooncache_file_store_mkdirs"
 
 ///|
 #borrow(final_path, temp_dir, prefix, content)
@@ -9,15 +9,15 @@ extern "C" fn file_store_atomic_write_ffi(
   temp_dir : Bytes,
   prefix : Bytes,
   content : Bytes,
-  content_length : Int,
-) -> Int = "mooncache_file_store_atomic_write"
+  content_length : Int32,
+) -> Int32 = "mooncache_file_store_atomic_write"
 
 ///|
 #borrow(source, destination)
 extern "C" fn file_store_replace_ffi(
   source : Bytes,
   destination : Bytes,
-) -> Int = "mooncache_file_store_replace"
+) -> Int32 = "mooncache_file_store_replace"
 
 ///|
 extern "C" fn file_store_error_ffi() -> Bytes = "mooncache_file_store_error"

@@ -94,13 +94,13 @@ test (bench : @bench.T) {
 
 ///|
 priv struct BenchOrigin {
-  mut calls : Int
+  mut calls : Int32
 }
 
 ///|
 impl Transport for BenchOrigin with fn execute(self, _request) -> TransportResponse raise TransportError {
   self.calls += 1
-  TransportResponse::{
+  {
     meta: ResponseMeta::complete(
       200,
       single_header("Cache-Control", "max-age=60"),
@@ -113,7 +113,7 @@ impl Transport for BenchOrigin with fn execute(self, _request) -> TransportRespo
 
 ///|
 test (bench : @bench.T) {
-  let origin = BenchOrigin::{ calls: 0 }
+  let origin = BenchOrigin::{ calls: 0, }
   let runtime = CachedRuntime::new(
     MemoryStore::default(),
     origin,

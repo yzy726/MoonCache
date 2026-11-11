@@ -4,7 +4,8 @@ pub const MAX_DELTA_SECONDS : Int64 = 9_223_372_036_854_775_807
 
 ///|
 /// A non-negative instant represented as caller-supplied epoch seconds.
-pub struct Timestamp(Int64) derive(Eq, Compare, Debug, ToJson, FromJson)
+#derive(Eq, Compare, Debug, ToJson, FromJson)
+pub struct Timestamp(Int64)
 
 ///|
 pub fn Timestamp::from_seconds(value : Int64) -> Timestamp {
@@ -53,7 +54,8 @@ pub fn Timestamp::saturating_add(
 ///|
 /// A non-negative number of seconds. Construction and arithmetic saturate
 /// instead of wrapping into negative values.
-pub struct DeltaSeconds(Int64) derive(Eq, Compare, Debug, ToJson, FromJson)
+#derive(Eq, Compare, Debug, ToJson, FromJson)
+pub struct DeltaSeconds(Int64)
 
 ///|
 pub fn DeltaSeconds::from_seconds(value : Int64) -> DeltaSeconds {
@@ -150,3 +152,33 @@ pub fn DeltaSeconds::max(
     other
   }
 }
+
+///|
+pub extend DeltaSeconds with @debug.Debug::{to_repr}
+
+///|
+pub extend DeltaSeconds with @json.ToJson::{to_json}
+
+///|
+pub extend DeltaSeconds with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend DeltaSeconds with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend DeltaSeconds with Eq::{not_equal, equal}
+
+///|
+pub extend Timestamp with @debug.Debug::{to_repr}
+
+///|
+pub extend Timestamp with @json.ToJson::{to_json}
+
+///|
+pub extend Timestamp with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend Timestamp with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend Timestamp with Eq::{not_equal, equal}

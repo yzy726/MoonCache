@@ -1,5 +1,6 @@
 ///|
 /// Stable operational event categories emitted by cache runtimes.
+#derive(Eq, Compare, Debug)
 pub(all) enum CacheEventKind {
   CacheRequestCompleted
   CacheHit
@@ -18,7 +19,7 @@ pub(all) enum CacheEventKind {
   CacheUpstreamRequestSaved
   CacheBackgroundRevalidation
   CacheBackgroundFailure
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn CacheEventKind::label(self : CacheEventKind) -> String {
@@ -47,28 +48,29 @@ pub fn CacheEventKind::label(self : CacheEventKind) -> String {
 /// Privacy-conscious event payload. Headers and response bodies are never
 /// included; URI and error detail remain available to an explicitly attached
 /// observer and should be redacted by applications when necessary.
+#derive(Eq, Debug)
 pub(all) struct CacheEvent {
   kind : CacheEventKind
   http_method : String
   uri : String
-  status : Int?
+  status : Int32?
   body_bytes : Int64
   count : Int64
   duration_milliseconds : Int64
   detail : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn CacheEvent::new(
   kind : CacheEventKind,
   request : RequestMeta,
-  status? : Int? = None,
-  body_bytes? : Int64 = 0L,
-  count? : Int64 = 1L,
-  duration_milliseconds? : Int64 = -1L,
-  detail? : String? = None,
+  status~ : Int32? = None,
+  body_bytes~ : Int64 = 0L,
+  count~ : Int64 = 1L,
+  duration_milliseconds~ : Int64 = -1L,
+  detail~ : String? = None,
 ) -> CacheEvent {
-  CacheEvent::{
+  {
     kind,
     http_method: request.http_method,
     uri: request.uri,
@@ -95,6 +97,7 @@ pub(open) trait CacheObserver {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct CacheStatsSnapshot {
   requests : Int64
   hits : Int64
@@ -117,7 +120,7 @@ pub(all) struct CacheStatsSnapshot {
   average_validation_milliseconds : Int64
   background_revalidations : Int64
   background_failures : Int64
-} derive(Eq, Debug)
+}
 
 ///|
 fn saturated_stats_add(left : Int64, right : Int64) -> Int64 {
@@ -168,7 +171,7 @@ pub struct CacheStats {
 
 ///|
 pub fn CacheStats::new() -> CacheStats {
-  CacheStats::{
+  {
     requests: 0L,
     hits: 0L,
     misses: 0L,
@@ -270,7 +273,7 @@ pub impl CacheObserver for CacheStats with fn observe(self, event) {
 
 ///|
 pub fn CacheStats::snapshot(self : CacheStats) -> CacheStatsSnapshot {
-  CacheStatsSnapshot::{
+  {
     requests: self.requests,
     hits: self.hits,
     misses: self.misses,
@@ -310,7 +313,7 @@ pub fn CacheStatsSnapshot::with_coalesced_total(
     return self
   }
   let additional = total - self.coalesced_requests
-  CacheStatsSnapshot::{
+  {
     ..self,
     coalesced_requests: total,
     saved_upstream_requests: saturated_stats_add(
@@ -321,7 +324,9 @@ pub fn CacheStatsSnapshot::with_coalesced_total(
 }
 
 ///|
-pub fn CacheStatsSnapshot::hit_rate_per_mille(self : CacheStatsSnapshot) -> Int {
+pub fn CacheStatsSnapshot::hit_rate_per_mille(
+  self : CacheStatsSnapshot,
+) -> Int32 {
   let classified = saturated_stats_add(
     self.hits,
     saturated_stats_add(self.misses, self.bypasses),
@@ -414,7 +419,7 @@ pub struct CacheTelemetry {
 
 ///|
 pub fn CacheTelemetry::new() -> CacheTelemetry {
-  CacheTelemetry::{ stats: CacheStats::new(), observer: None }
+  { stats: CacheStats::new(), observer: None, }
 }
 
 ///|
@@ -422,7 +427,7 @@ pub fn[O : CacheObserver] CacheTelemetry::with_observer(
   self : CacheTelemetry,
   observer : O,
 ) -> CacheTelemetry {
-  CacheTelemetry::{
+  {
     ..self,
     observer: Some(fn(event) { CacheObserver::observe(observer, event) }),
   }
@@ -442,11 +447,11 @@ fn CacheTelemetry::emit_kind(
   self : CacheTelemetry,
   kind : CacheEventKind,
   request : RequestMeta,
-  status? : Int? = None,
-  body_bytes? : Int64 = 0L,
-  count? : Int64 = 1L,
-  duration_milliseconds? : Int64 = -1L,
-  detail? : String? = None,
+  status~ : Int32? = None,
+  body_bytes~ : Int64 = 0L,
+  count~ : Int64 = 1L,
+  duration_milliseconds~ : Int64 = -1L,
+  detail~ : String? = None,
 ) -> Unit {
   self.emit(
     CacheEvent::new(
@@ -630,7 +635,7 @@ pub fn CacheTelemetry::record_purge(
   self : CacheTelemetry,
   http_method : String,
   uri : String,
-  removed : Int,
+  removed : Int32,
 ) -> Unit {
   if removed <= 0 {
     return
@@ -646,3 +651,27 @@ pub fn CacheTelemetry::record_purge(
 pub fn CacheTelemetry::snapshot(self : CacheTelemetry) -> CacheStatsSnapshot {
   self.stats.snapshot()
 }
+
+///|
+pub extend CacheEvent with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheEvent with Eq::{not_equal, equal}
+
+///|
+pub extend CacheEventKind with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheEventKind with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend CacheEventKind with Eq::{not_equal, equal}
+
+///|
+pub extend CacheStats with CacheObserver::{observe}
+
+///|
+pub extend CacheStatsSnapshot with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheStatsSnapshot with Eq::{not_equal, equal}

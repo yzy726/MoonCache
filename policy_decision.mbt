@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct CacheDecision {
   action : CacheActionKind
   trace : CacheTrace
   storage : StorageDecision
-} derive(Eq, Debug)
+}
 
 ///|
 fn add_request_policy_reasons(
@@ -46,7 +47,7 @@ fn decision_with_action(
 ) -> CacheDecision {
   trace.action = action
   trace.add_reason(CacheReason::new(reason))
-  CacheDecision::{ action, trace, storage }
+  { action, trace, storage, }
 }
 
 ///|
@@ -130,3 +131,9 @@ pub fn evaluate_cached_response(
     decision_with_action(Fetch, trace, storage, RuntimeFetch)
   }
 }
+
+///|
+pub extend CacheDecision with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheDecision with Eq::{not_equal, equal}

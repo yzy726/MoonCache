@@ -1,22 +1,23 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct RuntimeRequest {
   meta : RequestMeta
   body : Bytes
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn RuntimeRequest::new(meta : RequestMeta, body : Bytes) -> RuntimeRequest {
-  RuntimeRequest::{ meta, body }
+  { meta, body, }
 }
 
 ///|
 pub fn RuntimeRequest::get(uri : String) -> RuntimeRequest {
-  RuntimeRequest::{ meta: RequestMeta::simple("GET", uri), body: b"" }
+  { meta: RequestMeta::simple("GET", uri), body: b"", }
 }
 
 ///|
 pub fn RuntimeRequest::head(uri : String) -> RuntimeRequest {
-  RuntimeRequest::{ meta: RequestMeta::simple("HEAD", uri), body: b"" }
+  { meta: RequestMeta::simple("HEAD", uri), body: b"", }
 }
 
 ///|
@@ -24,7 +25,7 @@ pub fn RuntimeRequest::with_headers(
   self : RuntimeRequest,
   headers : HeaderMap,
 ) -> RuntimeRequest {
-  RuntimeRequest::{ meta: self.meta.with_headers(headers), body: self.body }
+  { meta: self.meta.with_headers(headers), body: self.body, }
 }
 
 ///|
@@ -32,10 +33,7 @@ pub fn RuntimeRequest::with_request_time(
   self : RuntimeRequest,
   request_time : Timestamp,
 ) -> RuntimeRequest {
-  RuntimeRequest::{
-    meta: self.meta.with_request_time(request_time),
-    body: self.body,
-  }
+  { meta: self.meta.with_request_time(request_time), body: self.body, }
 }
 
 ///|
@@ -43,44 +41,46 @@ pub fn RuntimeRequest::with_body(
   self : RuntimeRequest,
   body : Bytes,
 ) -> RuntimeRequest {
-  RuntimeRequest::{ meta: self.meta, body }
+  { meta: self.meta, body, }
 }
 
 ///|
 pub fn RuntimeRequest::copy(self : RuntimeRequest) -> RuntimeRequest {
-  RuntimeRequest::{
-    meta: RequestMeta::{ ..self.meta, headers: self.meta.headers.copy() },
+  {
+    meta: { ..self.meta, headers: self.meta.headers.copy(), },
     body: self.body,
   }
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TransportResponse {
   meta : ResponseMeta
   body : Bytes
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn TransportResponse::new(
   meta : ResponseMeta,
   body : Bytes,
 ) -> TransportResponse {
-  TransportResponse::{ meta, body }
+  { meta, body, }
 }
 
 ///|
 pub fn TransportResponse::copy(self : TransportResponse) -> TransportResponse {
-  TransportResponse::{
-    meta: ResponseMeta::{ ..self.meta, headers: self.meta.headers.copy() },
+  {
+    meta: { ..self.meta, headers: self.meta.headers.copy(), },
     body: self.body,
   }
 }
 
 ///|
+#derive(Eq, Debug)
 pub suberror TransportError {
   ScriptExhausted
   ScriptedTransportFailure(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn TransportError::message(self : TransportError) -> String {
@@ -96,22 +96,23 @@ pub(open) trait Transport {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TransportOutcome {
   TransportSuccess(TransportResponse)
   TransportFailure(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub struct FakeTransport {
   priv outcomes : Array[TransportOutcome]
-  priv mut cursor : Int
+  priv mut cursor : Int32
 }
 
 ///|
 pub fn FakeTransport::new(
   responses : Array[TransportResponse],
 ) -> FakeTransport {
-  FakeTransport::{
+  {
     outcomes: responses.map(fn(response) { TransportSuccess(response) }),
     cursor: 0,
   }
@@ -121,11 +122,11 @@ pub fn FakeTransport::new(
 pub fn FakeTransport::with_outcomes(
   outcomes : Array[TransportOutcome],
 ) -> FakeTransport {
-  FakeTransport::{ outcomes, cursor: 0 }
+  { outcomes, cursor: 0, }
 }
 
 ///|
-pub fn FakeTransport::call_count(self : FakeTransport) -> Int {
+pub fn FakeTransport::call_count(self : FakeTransport) -> Int32 {
   self.cursor
 }
 
@@ -153,7 +154,7 @@ pub impl Transport for FakeTransport with fn execute(self, request) {
 ///|
 pub struct RecordingTransport {
   priv outcomes : Array[TransportOutcome]
-  priv mut cursor : Int
+  priv mut cursor : Int32
   priv requests : Array[RuntimeRequest]
 }
 
@@ -161,7 +162,7 @@ pub struct RecordingTransport {
 pub fn RecordingTransport::new(
   responses : Array[TransportResponse],
 ) -> RecordingTransport {
-  RecordingTransport::{
+  {
     outcomes: responses.map(fn(response) { TransportSuccess(response) }),
     cursor: 0,
     requests: [],
@@ -172,7 +173,7 @@ pub fn RecordingTransport::new(
 pub fn RecordingTransport::with_outcomes(
   outcomes : Array[TransportOutcome],
 ) -> RecordingTransport {
-  RecordingTransport::{ outcomes, cursor: 0, requests: [] }
+  { outcomes, cursor: 0, requests: [], }
 }
 
 ///|
@@ -183,7 +184,7 @@ pub fn RecordingTransport::calls(
 }
 
 ///|
-pub fn RecordingTransport::call_count(self : RecordingTransport) -> Int {
+pub fn RecordingTransport::call_count(self : RecordingTransport) -> Int32 {
   self.cursor
 }
 
@@ -208,3 +209,27 @@ pub fn RecordingTransport::execute(
 pub impl Transport for RecordingTransport with fn execute(self, request) {
   RecordingTransport::execute(self, request)
 }
+
+///|
+pub extend RuntimeRequest with @debug.Debug::{to_repr}
+
+///|
+pub extend RuntimeRequest with Eq::{not_equal, equal}
+
+///|
+pub extend TransportError with @debug.Debug::{to_repr}
+
+///|
+pub extend TransportError with Eq::{not_equal, equal}
+
+///|
+pub extend TransportOutcome with @debug.Debug::{to_repr}
+
+///|
+pub extend TransportOutcome with Eq::{not_equal, equal}
+
+///|
+pub extend TransportResponse with @debug.Debug::{to_repr}
+
+///|
+pub extend TransportResponse with Eq::{not_equal, equal}

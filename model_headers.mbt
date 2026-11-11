@@ -65,13 +65,14 @@ pub fn is_valid_header_name(name : String) -> Bool {
 /// Repeated fields are retained as separate values. `contains` distinguishes a
 /// missing field from a present field whose value is empty, which is required
 /// for correct `Vary` matching.
+#derive(Eq, Debug)
 pub struct HeaderMap {
   values : Map[String, Array[String]]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn HeaderMap::new() -> HeaderMap {
-  HeaderMap::{ values: Map([]) }
+  { values: Map([]), }
 }
 
 ///|
@@ -167,7 +168,7 @@ pub fn HeaderMap::get(self : HeaderMap, name : String) -> String? {
 }
 
 ///|
-pub fn HeaderMap::length(self : HeaderMap) -> Int {
+pub fn HeaderMap::length(self : HeaderMap) -> Int32 {
   self.values.length()
 }
 
@@ -177,7 +178,7 @@ pub fn HeaderMap::is_empty(self : HeaderMap) -> Bool {
 }
 
 ///|
-fn compare_normalized_header_names(left : String, right : String) -> Int {
+fn compare_normalized_header_names(left : String, right : String) -> Int32 {
   let limit = if left.length() < right.length() {
     left.length()
   } else {
@@ -264,3 +265,9 @@ pub fn HeaderMap::overlay(self : HeaderMap, updates : HeaderMap) -> HeaderMap {
   }
   result
 }
+
+///|
+pub extend HeaderMap with @debug.Debug::{to_repr}
+
+///|
+pub extend HeaderMap with Eq::{not_equal, equal}

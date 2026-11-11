@@ -1,5 +1,10 @@
 # MoonCache
 
+## 0.3.0 更新
+
+- 适配 MoonBit 0.10.20，迁移派生语法并显式保留已有 trait 方法。
+- 更新 HTTP 与异步依赖，继续支持缓存策略、持久化及 CLI。
+
 > 面向 MoonBit 的、与传输层解耦且可解释的 HTTP 缓存策略与运行时工具包。
 
 MoonCache 将 RFC 9111 中分散的缓存规则组织成一条可测试、可追踪、可替换组件的完整执行链：
@@ -20,7 +25,7 @@ Request
 
 ## 发布信息
 
-- 当前版本：`0.2.0`
+- 当前版本：`0.3.0`
 - 代码仓库：[yzy726/MoonCache](https://github.com/yzy726/MoonCache)
 - Mooncakes：[Ag108/MoonCache](https://mooncakes.io/docs/Ag108/MoonCache)
 - 开源许可证：Apache-2.0
@@ -60,7 +65,7 @@ MoonCache 适合：
 在项目根目录运行：
 
 ```bash
-moon install
+moon update
 moon fmt --check
 moon check --deny-warn
 moon test --deny-warn
@@ -79,7 +84,7 @@ moon check --target wasm-gc --deny-warn
 使用 Moon 安装已发布的软件包：
 
 ```bash
-moon add Ag108/MoonCache@0.2.0
+moon add Ag108/MoonCache@0.3.0
 ```
 
 在 `moon.pkg` 中导入根包：
@@ -250,7 +255,7 @@ MoonCache 将同一主缓存键下的不同内容协商结果保存为独立变�
 
 ### `f4ah6o/http11`
 
-`adapters/http11` 在 `f4ah6o/http11@0.1.1` 的请求/响应类型和 MoonCache 模型之间转换。对于 origin-form 请求目标，调用方需要提供绝对 URI：
+`adapters/http11` 在 `f4ah6o/http11@0.1.2` 的请求/响应类型和 MoonCache 模型之间转换。对于 origin-form 请求目标，调用方需要提供绝对 URI：
 
 ```moonbit
 let cached_request = @mooncache_http11.request_to_runtime_at_uri(
@@ -271,7 +276,7 @@ let cached_request = @mooncache_http11.request_to_runtime_at_uri(
 - `ScriptedAsyncTransport`
 - `AsyncCachedRuntime`
 
-真实传输当前通过 `moonbitlang/async/http@0.20.2` 支持缓冲式 GET、POST 和 PUT，并接收注入的响应时钟：
+真实传输当前通过 `moonbitlang/async/http@0.22.9` 支持缓冲式 GET、POST 和 PUT，并接收注入的响应时钟：
 
 ```moonbit
 let origin = @mooncache_async.MoonbitAsyncHttpTransport::new(clock)
@@ -368,7 +373,7 @@ MoonCache/
 | 模块 | 版本 | 用途 | 许可证 |
 |---|---:|---|---|
 | `moonbitlang/x` | `0.4.46` | 原生 CLI 文件系统和进程参数 | Apache-2.0 |
-| `moonbitlang/async` | `0.20.2` | 隔离的原生异步 HTTP 适配器 | Apache-2.0 |
+| `moonbitlang/async` | `0.22.9` | 隔离的原生异步 HTTP 适配器 | Apache-2.0 |
 | `f4ah6o/http11` | `0.1.1` | 可选 HTTP11 类型转换 | Apache-2.0 |
 
 项目未内嵌或直接移植第三方实现代码。缓存行为依据 RFC 独立实现，详情见[第三方软件说明](THIRD_PARTY.md)和[参考资料](REFERENCES.md)。

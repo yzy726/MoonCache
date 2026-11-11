@@ -2,11 +2,12 @@
 priv struct Flight[X] {
   key : String
   value : @async.Lazy[X]
-  mut waiters : Int
+  mut waiters : Int32
   mut terminal_recorded : Bool
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RequestGroupStats {
   started : Int64
   coalesced : Int64
@@ -14,10 +15,10 @@ pub(all) struct RequestGroupStats {
   failed : Int64
   cancelled_waiters : Int64
   cancelled_flights : Int64
-  active_flights : Int
-  active_waiters : Int
-  peak_active_flights : Int
-} derive(Eq, Debug)
+  active_flights : Int32
+  active_waiters : Int32
+  peak_active_flights : Int32
+}
 
 ///|
 pub(all) struct RequestGroupResult[X] {
@@ -41,12 +42,12 @@ pub struct RequestGroup[X] {
   priv mut failed : Int64
   priv mut cancelled_waiters : Int64
   priv mut cancelled_flights : Int64
-  priv mut peak_active_flights : Int
+  priv mut peak_active_flights : Int32
 }
 
 ///|
 pub fn[X] RequestGroup::new(clone_value : (X) -> X) -> RequestGroup[X] {
-  RequestGroup::{
+  {
     flights: [],
     clone_value,
     started: 0,
@@ -125,22 +126,17 @@ async fn[X] RequestGroup::wait_for_flight(
   flight : Flight[X],
   coalesced : Bool,
 ) -> RequestGroupResult[X] {
+  defer self.release_waiter(flight, @async.is_being_cancelled())
   let outcome : Result[X, Error] = Ok(flight.value.wait()) catch {
-    error if @async.is_being_cancelled() => {
-      self.release_waiter(flight, true)
-      raise error
-    }
     error => Err(error)
   }
   match outcome {
     Ok(value) => {
       self.record_terminal(flight, true)
-      self.release_waiter(flight, false)
-      RequestGroupResult::{ value: (self.clone_value)(value), coalesced }
+      { value: (self.clone_value)(value), coalesced, }
     }
     Err(error) => {
       self.record_terminal(flight, false)
-      self.release_waiter(flight, false)
       raise error
     }
   }
@@ -163,7 +159,7 @@ pub async fn[X] RequestGroup::run(
   }
   let flight = Flight::{
     key,
-    value: @async.Lazy(operation),
+    value: Lazy(operation),
     waiters: 1,
     terminal_recorded: false,
   }
@@ -181,7 +177,7 @@ pub fn[X] RequestGroup::stats(self : RequestGroup[X]) -> RequestGroupStats {
   for flight in self.flights {
     active_waiters = active_waiters + flight.waiters
   }
-  RequestGroupStats::{
+  {
     started: self.started,
     coalesced: self.coalesced,
     succeeded: self.succeeded,
@@ -193,3 +189,9 @@ pub fn[X] RequestGroup::stats(self : RequestGroup[X]) -> RequestGroupStats {
     peak_active_flights: self.peak_active_flights,
   }
 }
+
+///|
+pub extend RequestGroupStats with @debug.Debug::{to_repr}
+
+///|
+pub extend RequestGroupStats with Eq::{not_equal, equal}

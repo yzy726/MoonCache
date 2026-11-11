@@ -1,6 +1,6 @@
 ///|
 fn build_boundary_matrix_family() -> Unit {
-  let lifetimes : Array[Int] = [30, 120, 300, 1800, 3600]
+  let lifetimes : Array[Int32] = [30, 120, 300, 1800, 3600]
   for i in 0..<lifetimes.length() {
     fresh_boundary_rows(
       "matrix",
@@ -10,7 +10,7 @@ fn build_boundary_matrix_family() -> Unit {
       [("Cache-Control", "max-age=\{lifetimes[i]}")],
     )
   }
-  let s_maxage_cases : Array[(Int, Int)] = [
+  let s_maxage_cases : Array[(Int32, Int32)] = [
     (60, 59),
     (60, 60),
     (60, 90),
@@ -109,7 +109,7 @@ fn build_request_matrix_family() -> Unit {
 
 ///|
 fn build_storage_mode_matrix_family() -> Unit {
-  let statuses : Array[Int] = [
+  let statuses : Array[Int32] = [
     200, 203, 204, 206, 301, 302, 308, 404, 410, 501, 504,
   ]
   for i in 0..<statuses.length() {

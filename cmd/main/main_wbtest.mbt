@@ -99,7 +99,7 @@ test "CLI replay JSON includes summary and cases" {
   let report = replay_json(
     "cases",
     [
-      ReplayCase::{
+      {
         file: "cases/one.json",
         name: "one",
         action: Some("FETCH"),
@@ -419,7 +419,7 @@ async test "caching proxy serves repeated requests from cache" {
 
 ///|
 fn sorted_json_files(directory : String) -> Array[String] raise {
-  let names = @fs.read_dir(directory)
+  let names = @fs.read_dir(directory).to_owned()
   names.sort_by(compare_cli_paths)
   let paths : Array[String] = []
   for name in names {

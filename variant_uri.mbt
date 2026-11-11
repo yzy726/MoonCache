@@ -1,5 +1,5 @@
 ///|
-fn first_uri_delimiter(value : String) -> Int {
+fn first_uri_delimiter(value : String) -> Int32 {
   let mut result = value.length()
   for index = 0; index < value.length(); index = index + 1 {
     let code = value.code_unit_at(index)
@@ -12,7 +12,7 @@ fn first_uri_delimiter(value : String) -> Int {
 }
 
 ///|
-fn count_code_unit(value : String, expected : UInt16) -> Int {
+fn count_code_unit(value : String, expected : UInt16) -> Int32 {
   let mut count = 0
   for index = 0; index < value.length(); index = index + 1 {
     if value.code_unit_at(index) == expected {
@@ -46,15 +46,18 @@ fn normalize_authority(authority : String, scheme : String) -> String? {
   }
   if authority.has_prefix("[") {
     guard authority.find("]") is Some(close) else { return None }
-    let host = authority.sub(start=0, end=close + 1).to_lower().to_owned()
-    let suffix = authority.sub(start=close + 1).to_owned()
+    let host = authority
+      .exact_view(start=0, end=close + 1)
+      .to_lower()
+      .to_owned()
+    let suffix = authority.exact_view(start=close + 1).to_owned()
     if suffix == "" {
       return Some(host)
     }
     if !suffix.has_prefix(":") {
       return None
     }
-    let raw_port = suffix.sub(start=1).to_owned()
+    let raw_port = suffix.exact_view(start=1).to_owned()
     guard normalized_port(raw_port) is Some(port) else { return None }
     if (scheme == "http" && port == "80") ||
       (scheme == "https" && port == "443") {
@@ -132,11 +135,11 @@ pub fn normalize_cache_uri(uri : String) -> String? {
   }
   let remainder = remainder_view.to_owned()
   let boundary = first_uri_delimiter(remainder)
-  let authority_text = remainder.sub(start=0, end=boundary).to_owned()
+  let authority_text = remainder.exact_view(start=0, end=boundary).to_owned()
   guard normalize_authority(authority_text, scheme) is Some(authority) else {
     return None
   }
-  let suffix_with_fragment = remainder.sub(start=boundary).to_owned()
+  let suffix_with_fragment = remainder.exact_view(start=boundary).to_owned()
   let suffix = match suffix_with_fragment.split_once("#") {
     Some((before, _)) => before.to_owned()
     None => suffix_with_fragment
@@ -164,7 +167,9 @@ pub fn cache_origin(uri : String) -> String? {
   }
   let rest = remainder.to_owned()
   let boundary = first_uri_delimiter(rest)
-  Some("\{scheme.to_owned()}://\{rest.sub(start=0, end=boundary).to_owned()}")
+  Some(
+    "\{scheme.to_owned()}://\{rest.exact_view(start=0, end=boundary).to_owned()}",
+  )
 }
 
 ///|

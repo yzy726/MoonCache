@@ -3,14 +3,14 @@ priv struct Row {
   family : String
   name : String
   mode : String
-  now : Int
+  now : Int32
   http_method : String
   uri : String
   request_headers : Array[(String, String)]
-  stored_status : Int?
+  stored_status : Int32?
   stored_headers : Array[(String, String)]
-  stored_request_time : Int
-  stored_response_time : Int
+  stored_request_time : Int32
+  stored_response_time : Int32
   body : String
   complete : Bool
   expected_action : String
@@ -35,7 +35,7 @@ fn Row::to_scenario(self : Row) -> @mooncache.CacheScenario {
       for pair in self.stored_headers {
         response_headers[pair.0] = pair.1
       }
-      Some(@mooncache.ScenarioResponse::{
+      Some({
         status,
         headers: response_headers,
         request_time: Some(self.stored_request_time),
@@ -46,11 +46,11 @@ fn Row::to_scenario(self : Row) -> @mooncache.CacheScenario {
     }
     None => None
   }
-  let expected : @mooncache.ScenarioExpected? = Some(@mooncache.ScenarioExpected::{
+  let expected : @mooncache.ScenarioExpected? = Some({
     action: self.expected_action,
     reason: self.expected_reason,
   })
-  @mooncache.CacheScenario::{
+  {
     name: self.name,
     mode: self.mode,
     now: self.now,
@@ -66,20 +66,20 @@ fn row(
   family : String,
   name : String,
   mode : String,
-  now : Int,
+  now : Int32,
   action : String,
-  reason? : String? = None,
-  http_method? : String = "GET",
-  uri? : String = "https://example.test/scenario",
-  request_headers? : Array[(String, String)] = [],
-  stored_status? : Int? = Some(200),
-  stored_headers? : Array[(String, String)] = [("Cache-Control", "max-age=60")],
-  stored_request_time? : Int = 0,
-  stored_response_time? : Int = 0,
-  body? : String = "payload",
-  complete? : Bool = true,
+  reason~ : String? = None,
+  http_method~ : String = "GET",
+  uri~ : String = "https://example.test/scenario",
+  request_headers~ : Array[(String, String)] = [],
+  stored_status~ : Int32? = Some(200),
+  stored_headers~ : Array[(String, String)] = [("Cache-Control", "max-age=60")],
+  stored_request_time~ : Int32 = 0,
+  stored_response_time~ : Int32 = 0,
+  body~ : String = "payload",
+  complete~ : Bool = true,
 ) -> Row {
-  Row::{
+  {
     family,
     name,
     mode,
@@ -124,7 +124,7 @@ fn slugify(value : String) -> String {
 }
 
 ///|
-fn pad(value : Int) -> String {
+fn pad(value : Int32) -> String {
   if value < 10 {
     "00\{value}"
   } else if value < 100 {
@@ -138,11 +138,11 @@ fn pad(value : Int) -> String {
 fn fresh_boundary_rows(
   family : String,
   label : String,
-  lifetime : Int,
+  lifetime : Int32,
   mode : String,
   headers : Array[(String, String)],
 ) -> Unit {
-  let cases : Array[(Int, Int)] = [
+  let cases : Array[(Int32, Int32)] = [
     (lifetime - 1, 0),
     (lifetime, 1),
     (lifetime + 30, 2),

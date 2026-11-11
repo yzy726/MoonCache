@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct AgeCalculation {
   apparent_age : DeltaSeconds
   response_delay : DeltaSeconds
@@ -9,7 +10,7 @@ pub(all) struct AgeCalculation {
   current_age : DeltaSeconds
   clock_clamped : Bool
   overflow_clamped : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 fn add_delta_with_overflow(
@@ -52,7 +53,7 @@ pub fn calculate_current_age(
   let (current_age, second_overflow) = add_delta_with_overflow(
     corrected_initial_age, resident_time,
   )
-  AgeCalculation::{
+  {
     apparent_age,
     response_delay,
     age_value,
@@ -66,3 +67,9 @@ pub fn calculate_current_age(
     overflow_clamped: first_overflow || second_overflow,
   }
 }
+
+///|
+pub extend AgeCalculation with @debug.Debug::{to_repr}
+
+///|
+pub extend AgeCalculation with Eq::{not_equal, equal}

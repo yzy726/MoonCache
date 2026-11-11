@@ -17,7 +17,7 @@ fn remove_test_directory(path : String) -> Unit {
   if !@fs.path_exists(path) {
     return
   }
-  let names : Array[String] = @fs.read_dir(path) catch { _ => [] }
+  let names : Array[String] = @fs.read_dir(path).to_owned() catch { _ => [] }
   for name in names {
     let child = test_store_path(path, name)
     let is_file = @fs.is_file(child) catch { _ => false }
@@ -108,7 +108,7 @@ test "file store persists metadata and body across reopen" {
     10,
   )
   let store = FileStore::open(root)
-  assert_true(store.put_checked(entry) is @mooncache.StoreInserted)
+  assert_true(store.put_checked(entry) is StoreInserted)
   let entry_id = entry_file_id(entry)
   let digest = body_file_digest(entry.body)
   assert_true(
@@ -157,9 +157,9 @@ test "file store retains Vary variants and replaces one variant" {
     3,
   )
   let store = FileStore::open(root)
-  assert_true(store.put_checked(english_old) is @mooncache.StoreInserted)
-  assert_true(store.put_checked(chinese) is @mooncache.StoreInserted)
-  assert_true(store.put_checked(english_new) is @mooncache.StoreReplacedResult)
+  assert_true(store.put_checked(english_old) is StoreInserted)
+  assert_true(store.put_checked(chinese) is StoreInserted)
+  assert_true(store.put_checked(english_new) is StoreReplacedResult)
   assert_eq(store.stats().replacements, 1)
   let reopened = FileStore::open(root)
   let found = reopened.find_variants(english_new.primary_key)
@@ -216,8 +216,8 @@ test "file store rejects no-store and oversized entries" {
     ..ordinary,
     policy: @mooncache.StoredPolicy::uncacheable(),
   }
-  assert_true(store.put_checked(oversized) is @mooncache.StoreRejectedOversized)
-  assert_true(store.put_checked(no_store) is @mooncache.StoreRejectedNoStore)
+  assert_true(store.put_checked(oversized) is StoreRejectedOversized)
+  assert_true(store.put_checked(no_store) is StoreRejectedNoStore)
   assert_eq(store.stats().entries, 0)
   assert_eq(store.stats().rejected_entries, 2)
   reset_test_store(root)

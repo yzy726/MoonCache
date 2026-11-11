@@ -1,13 +1,14 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct StorageDecision {
   storable : Bool
   policy : StoredPolicy
   reasons : Array[CacheReason]
-} derive(Eq, Debug)
+}
 
 ///|
 fn rejected_storage(code : CacheReasonCode, rfc : String) -> StorageDecision {
-  StorageDecision::{
+  {
     storable: false,
     policy: StoredPolicy::uncacheable(),
     reasons: [CacheReason::with_rfc(code, rfc)],
@@ -17,7 +18,7 @@ fn rejected_storage(code : CacheReasonCode, rfc : String) -> StorageDecision {
 ///|
 /// Statuses defined as heuristically cacheable by RFC 9111. Partial-content
 /// status 206 is excluded because range caching is outside the 0.1.3 scope.
-pub fn is_default_cacheable_status(status : Int) -> Bool {
+pub fn is_default_cacheable_status(status : Int32) -> Bool {
   status == 200 ||
   status == 203 ||
   status == 204 ||
@@ -114,7 +115,7 @@ pub fn evaluate_storage(
     reasons.push(CacheReason::with_rfc(StoreStatusExplicit, "RFC9111-3"))
   }
   reasons.push(CacheReason::new(freshness.source.reason()))
-  StorageDecision::{
+  {
     storable: true,
     policy: StoredPolicy::from_directives(
       freshness.lifetime,
@@ -124,3 +125,9 @@ pub fn evaluate_storage(
     reasons,
   }
 }
+
+///|
+pub extend StorageDecision with @debug.Debug::{to_repr}
+
+///|
+pub extend StorageDecision with Eq::{not_equal, equal}

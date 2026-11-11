@@ -1,0 +1,10 @@
+.DS_Store
+_build/
+target/
+target
+.mooncakes/
+.moonagent/
+# 在 .gitignore 中添加
+goal.md
+项目申报书.md
+AGENTS.md

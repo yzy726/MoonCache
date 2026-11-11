@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum CacheActionKind {
   ServeFresh
   Revalidate
@@ -6,7 +7,7 @@ pub(all) enum CacheActionKind {
   ServeStale
   Bypass
   OnlyIfCachedMiss
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn CacheActionKind::label(self : CacheActionKind) -> String {
@@ -21,6 +22,7 @@ pub fn CacheActionKind::label(self : CacheActionKind) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct CacheTrace {
   mut action : CacheActionKind
   reasons : Array[CacheReason]
@@ -31,11 +33,11 @@ pub(all) struct CacheTrace {
   mut selected_variant : String?
   mut validator : String?
   generated_headers : HeaderMap
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn CacheTrace::new(action : CacheActionKind) -> CacheTrace {
-  CacheTrace::{
+  {
     action,
     reasons: [],
     age: None,
@@ -51,7 +53,7 @@ pub fn CacheTrace::new(action : CacheActionKind) -> CacheTrace {
 ///|
 /// Deep-copy mutable trace collections for independently returned responses.
 pub fn CacheTrace::copy(self : CacheTrace) -> CacheTrace {
-  CacheTrace::{
+  {
     action: self.action,
     reasons: self.reasons.copy(),
     age: self.age,
@@ -201,3 +203,18 @@ pub fn CacheTrace::text_report(self : CacheTrace) -> String {
   }
   lines.join("\n")
 }
+
+///|
+pub extend CacheActionKind with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheActionKind with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend CacheActionKind with Eq::{not_equal, equal}
+
+///|
+pub extend CacheTrace with @debug.Debug::{to_repr}
+
+///|
+pub extend CacheTrace with Eq::{not_equal, equal}

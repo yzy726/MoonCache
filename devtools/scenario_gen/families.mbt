@@ -1,6 +1,6 @@
 ///|
 fn build_storage_family() -> Unit {
-  let default_statuses : Array[(Int, String)] = [
+  let default_statuses : Array[(Int32, String)] = [
     (200, "ok"),
     (203, "non-authoritative"),
     (204, "no-content"),
@@ -28,7 +28,7 @@ fn build_storage_family() -> Unit {
       ),
     )
   }
-  let non_default : Array[(Int, String)] = [
+  let non_default : Array[(Int32, String)] = [
     (302, "found"),
     (307, "temporary-redirect"),
     (429, "too-many-requests"),
@@ -817,7 +817,7 @@ fn build_vary_family() -> Unit {
 }
 
 ///|
-fn header_name_of(index : Int) -> String {
+fn header_name_of(index : Int32) -> String {
   let names = [
     "Accept-Language", "User-Agent", "Accept-Encoding", "Accept", "X-Custom", "Referer",
     "X-Device", "X-Region",
@@ -1164,7 +1164,7 @@ fn build_heuristic_family() -> Unit {
 }
 
 ///|
-fn format_post_epoch(total_seconds : Int) -> String {
+fn format_post_epoch(total_seconds : Int32) -> String {
   // Minimal RFC1123 formatter for the fixture epoch range.
   let days = total_seconds / 86400
   let rem = total_seconds % 86400
@@ -1177,7 +1177,7 @@ fn format_post_epoch(total_seconds : Int) -> String {
 }
 
 ///|
-fn pad2(value : Int) -> String {
+fn pad2(value : Int32) -> String {
   if value < 10 {
     "0\{value}"
   } else {

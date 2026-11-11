@@ -20,11 +20,15 @@ pub fn runtime_response_to_http11(@MoonCache.RuntimeResponse) -> @f4ah6o/http11.
 pub fn transport_response_to_http11(@MoonCache.TransportResponse) -> @f4ah6o/http11.Response
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub suberror Http11AdapterError {
   AbsoluteUriRequired(String)
   InvalidHeaderName(String)
-} derive(Eq, @debug.Debug)
+}
+pub fn Http11AdapterError::equal(Self, Self) -> Bool
 pub fn Http11AdapterError::message(Self) -> String
+pub fn Http11AdapterError::not_equal(Self, Self) -> Bool
+pub fn Http11AdapterError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 

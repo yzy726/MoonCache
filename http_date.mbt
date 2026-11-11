@@ -1,5 +1,5 @@
 ///|
-fn parse_decimal_int(value : String) -> Int? {
+fn parse_decimal_int(value : String) -> Int32? {
   if value == "" {
     return None
   }
@@ -8,12 +8,12 @@ fn parse_decimal_int(value : String) -> Int? {
       return None
     }
   }
-  let parsed : Int? = Some(@strconv.from_str(value)) catch { _ => None }
+  let parsed : Int32? = Some(@string.parse_int(value)) catch { _ => None }
   parsed
 }
 
 ///|
-fn month_number(value : String) -> Int? {
+fn month_number(value : String) -> Int32? {
   match value {
     "Jan" => Some(1)
     "Feb" => Some(2)
@@ -32,12 +32,12 @@ fn month_number(value : String) -> Int? {
 }
 
 ///|
-fn is_leap_year(year : Int) -> Bool {
+fn is_leap_year(year : Int32) -> Bool {
   year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 ///|
-fn days_in_month(year : Int, month : Int) -> Int {
+fn days_in_month(year : Int32, month : Int32) -> Int32 {
   match month {
     1 | 3 | 5 | 7 | 8 | 10 | 12 => 31
     4 | 6 | 9 | 11 => 30
@@ -47,13 +47,13 @@ fn days_in_month(year : Int, month : Int) -> Int {
 }
 
 ///|
-fn leap_days_before_year(year : Int) -> Int64 {
+fn leap_days_before_year(year : Int32) -> Int64 {
   let previous = (year - 1).to_int64()
   previous / 4 - previous / 100 + previous / 400
 }
 
 ///|
-fn days_before_month(year : Int, month : Int) -> Int {
+fn days_before_month(year : Int32, month : Int32) -> Int32 {
   let regular = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   let base = regular[month - 1]
   if month > 2 && is_leap_year(year) {
@@ -65,12 +65,12 @@ fn days_before_month(year : Int, month : Int) -> Int {
 
 ///|
 fn civil_time_to_timestamp(
-  year : Int,
-  month : Int,
-  day : Int,
-  hour : Int,
-  minute : Int,
-  second : Int,
+  year : Int32,
+  month : Int32,
+  day : Int32,
+  hour : Int32,
+  minute : Int32,
+  second : Int32,
 ) -> Timestamp? {
   if year < 1970 ||
     year > 9999 ||
@@ -130,18 +130,18 @@ pub fn parse_http_date(value : String) -> Timestamp? {
   if text.length() != 29 || !http_date_separators_valid(text) {
     return None
   }
-  if !valid_weekday(text.sub(start=0, end=3).to_owned()) {
+  if !valid_weekday(text.exact_view(start=0, end=3).to_owned()) {
     return None
   }
-  if text.sub(start=26, end=29).to_owned() != "GMT" {
+  if text.exact_view(start=26, end=29).to_owned() != "GMT" {
     return None
   }
-  let day = parse_decimal_int(text.sub(start=5, end=7).to_owned())
-  let month = month_number(text.sub(start=8, end=11).to_owned())
-  let year = parse_decimal_int(text.sub(start=12, end=16).to_owned())
-  let hour = parse_decimal_int(text.sub(start=17, end=19).to_owned())
-  let minute = parse_decimal_int(text.sub(start=20, end=22).to_owned())
-  let second = parse_decimal_int(text.sub(start=23, end=25).to_owned())
+  let day = parse_decimal_int(text.exact_view(start=5, end=7).to_owned())
+  let month = month_number(text.exact_view(start=8, end=11).to_owned())
+  let year = parse_decimal_int(text.exact_view(start=12, end=16).to_owned())
+  let hour = parse_decimal_int(text.exact_view(start=17, end=19).to_owned())
+  let minute = parse_decimal_int(text.exact_view(start=20, end=22).to_owned())
+  let second = parse_decimal_int(text.exact_view(start=23, end=25).to_owned())
   match (year, month, day, hour, minute, second) {
     (Some(y), Some(m), Some(d), Some(h), Some(min), Some(sec)) =>
       civil_time_to_timestamp(y, m, d, h, min, sec)

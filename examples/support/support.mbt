@@ -1,6 +1,6 @@
 ///|
 pub fn response(
-  status : Int,
+  status : Int32,
   headers : Array[(String, String)],
   body : Bytes,
   request_time : Int64,
